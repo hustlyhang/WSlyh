@@ -91,7 +91,7 @@ private:
     // 主状态机解析报文中的请求行数据
     HTTP_CODE parse_request_line(char *text);
     // 主状态机解析报文中的请求头数据
-    HTTP_CODE parse_header(char *text);
+    HTTP_CODE parse_headers(char *text);
     // 主状态机解析报文中的请求内容
     HTTP_CODE parse_content(char *text);
     // 生成响应报文
@@ -104,7 +104,7 @@ private:
 
     void unmap();
     // 根据响应报文格式，生成对应8个部分，以下函数均由do_request调用
-    bool add_respanse(const char *formatm, ...);
+    bool add_response(const char *formatm, ...);
     bool add_content(const char *content);
     bool add_status_line(int status, const char *title);
     bool add_headers(int content_length);

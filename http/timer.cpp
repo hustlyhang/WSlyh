@@ -19,10 +19,11 @@ TimerHeap::~TimerHeap() {
 
 void TimerHeap::heap_down(int heap_node) {
     HeapTimer* tmp_timer = m_timer_array[heap_node];
+
     int child = 0;
     for (; heap_node * 2 + 1 < m_cur_num; heap_node = child) {
         child = heap_node * 2 + 1;
-        if (child + 1 < m_cur_num && m_timer_array[child + 1]->expire_time < m_timer_array[child]->expire_time) child ++;
+        if (child + 1 < m_cur_num && m_timer_array[child + 1]->expire_time < m_timer_array[child]->expire_time) child++;
         if (tmp_timer->expire_time > m_timer_array[child]->expire_time) {
             m_timer_array[heap_node] = m_timer_array[child];
         }
@@ -43,7 +44,8 @@ void TimerHeap::add_timer(HeapTimer* add_timer) {
         parent = ( last_node - 1 ) / 2;
         if( m_timer_array[parent]->expire_time > add_timer->expire_time ) {
             m_timer_array[last_node] = m_timer_array[parent];
-        } else {
+        } 
+        else {
             break;
         }
     }
@@ -57,10 +59,10 @@ void TimerHeap::del_timer( HeapTimer* del_timer ) {
 }
 
 void TimerHeap::pop_timer() {
-    if( !m_cur_num ) return;
-    if( m_timer_array[0] ) {
-        m_timer_array[0] = m_timer_array[m_cur_num];
-        delete m_timer_array[m_cur_num--];
+    if(!m_cur_num) return;
+    if(m_timer_array[0]) {
+        m_timer_array[0] = m_timer_array[m_cur_num - 1];
+        m_timer_array[--m_cur_num] = nullptr;
         heap_down(0);  // 对新的根节点进行下滤
     }
 }
@@ -68,10 +70,16 @@ void TimerHeap::pop_timer() {
 void TimerHeap::tick() {
     HeapTimer* tmp_timer = m_timer_array[0];
     time_t cur_time = time(NULL);
-    while(!m_cur_num) {
+    printf("now time is %ld\n", cur_time);
+    while(m_cur_num) {
+        printf("loop\n");
         if(!tmp_timer) break;
+        printf("timer time is %ld\n", tmp_timer->expire_time);
         if(tmp_timer->expire_time > cur_time) break;
-        if(m_timer_array[0]->callback_func) m_timer_array[0]->callback_func(m_timer_array[0]->m_client_data);
+        if(m_timer_array[0]->callback_func) {
+            printf("call_back\n");
+            m_timer_array[0]->callback_func(m_timer_array[0]->m_client_data);
+        }
         pop_timer();
         tmp_timer = m_timer_array[0];
     }
@@ -86,4 +94,9 @@ void TimerHeap::resize() {
     m_timer_array = tmp;
 }
 
-
+HeapTimer* TimerHeap::getTop(){
+    if (m_cur_num != 0) {
+        return m_timer_array[0];
+    }
+    return nullptr;
+}

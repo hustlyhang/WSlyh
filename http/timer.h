@@ -1,6 +1,6 @@
 #ifndef TIMER_H
 #define TIMER_H
-#include "http.h"
+// #include "http.h"
 #include <vector>
 #include <sys/time.h>
 #include <netinet/in.h>
@@ -43,6 +43,7 @@ public:
 
     void resize(); // 当数组容纳不下的时候扩容
 
+    HeapTimer* getTop();
 
 private:
     int m_capacity;

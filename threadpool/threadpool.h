@@ -19,7 +19,7 @@ public:
     ~threadpool();
     // 向工作队列中插入任务,flg代表任务类型
     // 1 写，   0 读
-    bool append(T *request_data, int flg);
+    // bool append(T *request_data, int flg);
     bool append(T *request_data);
     // 线程入口函数,会不断得从任务队列中取出函数然后执行
     static void *work(void *pool);

@@ -1,6 +1,6 @@
-#include "timer.h"
+#include "../http/timer.h"
 #include <iostream>
-
+#include "../log/log.h"
 
 
 void cb_f(client_data* _client_data){
@@ -12,22 +12,27 @@ class CUnitTest {
 public:
     CUnitTest();
     ~CUnitTest();
-    void test();
+    void test_timer();
+    void test_log();
     int gettop();
     void init();
 private:
-    TimerHeap* m_timer_heap;
-    int* delay_time;
+    TimerHeap* m_timer_heap = nullptr;
+
+    int* delay_time = nullptr;
     int test_size;
 };
 
 CUnitTest::CUnitTest() {
     printf("construct!\n");
-    init();
 }
 CUnitTest::~CUnitTest() {
-    delete []delay_time;
-    delete m_timer_heap;
+    if (delay_time)
+        delete[]delay_time;
+    delay_time = nullptr;
+    if (m_timer_heap)
+        delete m_timer_heap;
+    m_timer_heap = nullptr;
 }
 
 void CUnitTest::init() {
@@ -42,7 +47,8 @@ void CUnitTest::init() {
 int CUnitTest::gettop() {
     return m_timer_heap->getTop()->m_client_data->sock_fd;
 }
-void CUnitTest::test() {
+void CUnitTest::test_timer() {
+    init();
     sockaddr_in addr_tmp;
     // 先生成10个client_data
     printf("in test\n");
@@ -69,14 +75,19 @@ void CUnitTest::test() {
 }
 
 
+/*****************log测试********************************/
+void CUnitTest::test_log() {
+    UTC_Time m_sUtc;
+    m_sUtc.GetCurTime_debug();
+}
+
 
 
 int main() {
-    //CUnitTest* m_test = new CUnitTest();
     CUnitTest m_test2;
     printf("begin test!\n");
-    //m_test->test();
-    m_test2.test();
+    // m_test2.test_timer();
+    m_test2.test_log();
     
     return 0;
 }
@@ -102,3 +113,13 @@ test:
 
     应该是因为写了括号需要调用含参构造函数，但是没有?
 */ 
+
+
+
+/*
+    打印时间的时候长度不是根据字符来的吗？
+    中文需要占用三个char？
+    查到了
+    UTF-8编码中，一个英文字符等于一个字节，一个中文（含繁体）等于三个字节。
+    GCC中的参数n表示向str中写入n个字符，包括'\0'字符，并且返回实际的字符串长度。
+*/

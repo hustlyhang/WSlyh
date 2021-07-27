@@ -12,8 +12,8 @@ TimerHeap::TimerHeap(int _capacity):m_capacity(_capacity), m_cur_num(0) {
 }
 
 TimerHeap::~TimerHeap() {
-    for (int i = 0; i < m_cur_num; ++i) m_timer_array[i] = nullptr;
     delete [] m_timer_array;
+    for (int i = 0; i < m_cur_num; ++i) m_timer_array[i] = nullptr;
 }
 
 
@@ -61,8 +61,9 @@ void TimerHeap::del_timer( HeapTimer* del_timer ) {
 void TimerHeap::pop_timer() {
     if(!m_cur_num) return;
     if(m_timer_array[0]) {
-        m_timer_array[0] = m_timer_array[m_cur_num - 1];
-        m_timer_array[--m_cur_num] = nullptr;
+        m_timer_array[0] = m_timer_array[--m_cur_num];
+        delete m_timer_array[m_cur_num];
+        m_timer_array[m_cur_num] = nullptr;
         heap_down(0);  // 对新的根节点进行下滤
     }
 }

@@ -9,14 +9,14 @@
 
 
 // 包装互斥锁
-class locker {
+class CLocker {
 public:
-    locker(){
+    CLocker(){
         if (pthread_mutex_init(&m_mutex, NULL) != 0) {
             throw std::exception();
         }
     }
-    ~locker() {
+    ~CLocker() {
         pthread_mutex_destroy(&m_mutex);
     }
 
@@ -37,19 +37,19 @@ private:
 };
 
 // 包装信号量
-class sem {
+class CSem {
 public:
-    sem() {
+    CSem() {
         if (sem_init(&m_sem, 0, 0) != 0) {
             throw std::exception();
         }
     }
-    sem(int num) {
+    CSem(int num) {
         if (sem_init(&m_sem, 0, num) != 0) {
             throw std::exception();
         }
     }
-    ~sem() {
+    ~CSem() {
         sem_destroy(&m_sem);
     }
 
@@ -68,13 +68,13 @@ private:
 
 // 包装条件变量
 // 为什么在wait后面的函数中需要用局部变量保存值
-class cond {
+class CCond {
 public:
-    cond() {
+    CCond() {
         if (pthread_cond_init(&m_cond, NULL) != 0) throw std::exception();
     }
 
-    ~cond() {
+    ~CCond() {
         pthread_cond_destroy(&m_cond);
     }
 

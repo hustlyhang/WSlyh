@@ -26,8 +26,8 @@ public:
 
 private:
     // 锁和条件变量
-    locker m_lock;
-    cond m_cond;
+    CLocker m_lock;
+    CCond m_cond;
     pthread_t *m_threads;
     std::queue<T *> m_tasks;
 };

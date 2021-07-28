@@ -9,7 +9,13 @@
 #include <sys/time.h>
 #include <sys/types.h>//getpid, gettid
 #include <iostream>
+#include "../lock/locker.h"
+
 #define DEBUG_TEST
+#define MAX_PROG_NAME_LEN 128
+#define MAX_LOG_DIR_LEN 512
+
+
 
 // 日志等级
 enum class LOG_LEVEL {
@@ -89,8 +95,8 @@ private:
 // 内存块，用于存储日志
 class CBufferCell {
 public:
-	CBufferCell(uint32_t _len): m_eStatus(BUFFER_STATUS::FREE), m_pPre(nullptr), m_pNext(nullptr), m_iTolLength(_len), m_iCurLength(0){
-		m_data = new char[m_iTolLength]();
+	CBufferCell(uint32_t _len): m_eStatus(BUFFER_STATUS::FREE), m_pPre(nullptr), m_pNext(nullptr), m_uTolLength(_len), m_uCurLength(0){
+		m_data = new char[m_uTolLength]();
 		if (!m_data) {
 			fprintf(stderr, "Have no enough memory!!!!!!!!\n");
 			exit(1);
@@ -100,28 +106,28 @@ public:
 	CBufferCell& operator = (const CBufferCell&) = delete;
 
 	uint32_t GetFreeLen() {
-		return m_iTolLength - m_iCurLength;
+		return m_uTolLength - m_uCurLength;
 	}
 
 	bool IsEmpty() {
-		return m_iCurLength == 0;
+		return m_uCurLength == 0;
 	}
 
 	void Append(const char* _log_data, uint32_t _len) {
 		if (GetFreeLen() < _len) return;
-		memcpy(m_data + m_iCurLength, _log_data, (size_t)_len);
-		m_iCurLength += _len;
+		memcpy(m_data + m_uCurLength, _log_data, (size_t)_len);
+		m_uCurLength += _len;
 	}
 
 	void ClearBuffer() {
-		m_iCurLength = 0;
-		memset(m_data, '\0', m_iTolLength);
+		m_uCurLength = 0;
+		memset(m_data, '\0', m_uTolLength);
 		m_eStatus = BUFFER_STATUS::FREE;
 	}
 
 	void Persist(FILE* _fp) {
-		uint32_t tmpWriteLen = fwrite(m_data, 1, m_iCurLength, _fp);
-		if (tmpWriteLen != m_iCurLength) {
+		uint32_t tmpWriteLen = fwrite(m_data, 1, m_uCurLength, _fp);
+		if (tmpWriteLen != m_uCurLength) {
 			fprintf(stderr, "Write file fail!!!!!!!  write len : %d\n", tmpWriteLen);
 		}
 	}
@@ -136,8 +142,8 @@ public:
 	CBufferCell* m_pNext;
 private:
 	char* m_data;
-	uint32_t m_iTolLength;
-	uint32_t m_iCurLength;
+	uint32_t m_uTolLength;
+	uint32_t m_uCurLength;
 };
 
 // 内存环实现日志，单例模式
@@ -147,17 +153,35 @@ public:
 		static CRingLog rl;
 		return &rl;
 	}
+	void InitLogPath(const char* _logdir, const char * _prog_name, int _level);
+	int GetLevel() const { return m_iLevel; }
+	void PersistLog();
+	void TryAppendLog(const char* _lvl, const char* format, ...);
+
 private:
 	CRingLog();
 	~CRingLog();
 	CRingLog(const CRingLog&) = delete;
 	CRingLog& operator = (const CRingLog&) = delete;
-	
-
+	bool DecisFile(int _year, int _mon, int _day);
 public:
 
 
 private:
+	int m_iBuffCnt;
+	CBufferCell* m_pCurBuf, * m_pPrstBuf, * m_pLastBuf;
+	FILE* m_pFp;
+	pid_t m_Pid;
+	int m_iYear, m_iMon, m_iDay, m_iLogCnt;
+	char m_aProgName[MAX_PROG_NAME_LEN];
+	char m_aLogDir[MAX_LOG_DIR_LEN];
+	bool m_bEnv;		// 日记路径是否正确
+	int m_iLevel;
+	uint64_t m_uLastLogTime;
+	UTC_Time m_sTM;
+	static CLocker m_cLocker;
+	static CCond m_cCond;
+	static uint32_t m_uOneBuffLen;
 };
 
 

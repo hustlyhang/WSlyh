@@ -31,7 +31,11 @@
 
     ✔mkdir()
     ✔strerror()
-    rename()
+    ✔rename()
+    ✔__FUNCTION__
+        __FUNCTION__：返回当前代码所在函数的名字
+        __FILE__： 就是当前源代码文件名
+        __LINE__： 就是当前源代码的行号
 
 
 优化：

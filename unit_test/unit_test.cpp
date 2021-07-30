@@ -16,9 +16,11 @@ public:
     void test_log();
     int gettop();
     void init();
+
+public:
+    const char m_aLogDir[1024] = {"./ServerLog"};  //日志记录文件夹
 private:
     TimerHeap* m_timer_heap = nullptr;
-
     int* delay_time = nullptr;
     int test_size;
 };
@@ -79,6 +81,12 @@ void CUnitTest::test_timer() {
 void CUnitTest::test_log() {
     UTC_Time m_sUtc;
     m_sUtc.GetCurTime_debug();
+    CRingLog* log = CRingLog::GetInstance();
+    LOG_INIT(m_aLogDir, "WebServer", (int)LOG_LEVEL::TRACE);
+    LOG_INFO("this is a test%d", 14);
+    LOG_DEBUG("this is a test%d", 15);
+    LOG_FATAL("this is a test%d %s", 16, "fsdfs");
+
 }
 
 

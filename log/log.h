@@ -12,10 +12,11 @@
 #include "../lock/locker.h"
 
 #define DEBUG_TEST
-#define MAX_PROG_NAME_LEN 128
-#define MAX_LOG_DIR_LEN 512
+#define MAX_PROG_NAME_LEN 128		// 日志记录程序名称
+#define MAX_LOG_DIR_LEN 512			// 日志文件路径
 
-
+// 获取线程名
+extern pid_t GetPid();
 
 // 日志等级
 enum class LOG_LEVEL {
@@ -186,5 +187,101 @@ private:
 	static uint32_t m_uOneBuffLen;	// 单个日志节点最大长度
 };
 
+// 持久化线程入口函数
+void* ConFunc(void* arg);
+
+// 方便使用，定义宏
+
+// 定义单个日志单元缓冲区大小
+#define LOG_MEM_SET(mem_lmt) \
+    do \
+    { \
+        if (mem_lmt < 10 * 1024 * 1024) \
+        { \
+            mem_lmt = 10 * 1024 * 1024; \
+        } \
+        else if (mem_lmt > 50 * 1024 * 1024) \
+        { \
+            mem_lmt = 50 * 1024 * 1024; \
+        } \
+        CRingLog::m_uOneBuffLen = mem_lmt; \
+    } while (0)
+
+#define LOG_INIT(log_dir, prog_name, level) \
+    do \
+    { \
+        CRingLog::GetInstance()->InitLogPath(log_dir, prog_name, level); \
+        pthread_t tid; \
+        pthread_create(&tid, NULL, ConFunc, NULL); \
+        pthread_detach(tid); \
+    } while (0)
+
+//format: [LEVEL][yy-mm-dd h:m:s.ms][tid]file_name:line_no(func_name):content
+#define LOG_TRACE(fmt, args...) \
+    do \
+    { \
+        if (CRingLog::GetInstance()->GetLevel() >= LOG_LEVEL::TRACE) \
+        { \
+            CRingLog::GetInstance()->TryAppendLog("[TRACE]", "[%u]%s:%d(%s): " fmt "\n", \
+                    GetPid(), __FILE__, __LINE__, __FUNCTION__, ##args); \
+        } \
+    } while (0)
+
+#define LOG_DEBUG(fmt, args...) \
+    do \
+    { \
+        if (CRingLog::GetInstance()->GetLevel() >= LOG_LEVEL::DEBUG) \
+        { \
+            CRingLog::GetInstance()->TryAppendLog("[DEBUG]", "[%u]%s:%d(%s): " fmt "\n", \
+                    GetPid(), __FILE__, __LINE__, __FUNCTION__, ##args); \
+        } \
+    } while (0)
+
+#define LOG_INFO(fmt, args...) \
+    do \
+    { \
+        if (CRingLog::GetInstance()->GetLevel() >= LOG_LEVEL::INFO) \
+        { \
+            CRingLog::GetInstance()->TryAppendLog("[INFO]", "[%u]%s:%d(%s): " fmt "\n", \
+                    GetPid(), __FILE__, __LINE__, __FUNCTION__, ##args); \
+        } \
+    } while (0)
+
+#define LOG_NORMAL(fmt, args...) \
+    do \
+    { \
+        if (CRingLog::GetInstance()->GetLevel() >= LOG_LEVEL::INFO) \
+        { \
+            CRingLog::GetInstance()->TryAppendLog("[INFO]", "[%u]%s:%d(%s): " fmt "\n", \
+                    GetPid(), __FILE__, __LINE__, __FUNCTION__, ##args); \
+        } \
+    } while (0)
+
+#define LOG_WARN(fmt, args...) \
+    do \
+    { \
+        if (CRingLog::GetInstance()->GetLevel() >= LOG_LEVEL::WARN) \
+        { \
+            CRingLog::GetInstance()->TryAppendLog("[WARN]", "[%u]%s:%d(%s): " fmt "\n", \
+                    GetPid(), __FILE__, __LINE__, __FUNCTION__, ##args); \
+        } \
+    } while (0)
+
+#define LOG_ERROR(fmt, args...) \
+    do \
+    { \
+        if (CRingLog::GetInstance()->GetLevel() >= LOG_LEVEL::ERROR) \
+        { \
+            CRingLog::GetInstance()->TryAppendLog("[ERROR]", "[%u]%s:%d(%s): " fmt "\n", \
+                GetPid(), __FILE__, __LINE__, __FUNCTION__, ##args); \
+        } \
+    } while (0)
+
+#define LOG_FATAL(fmt, args...) \
+    do \
+    { \
+        CRingLog::GetInstance()->TryAppendLog("[FATAL]", "[%u]%s:%d(%s): " fmt "\n", \
+            GetPid(), __FILE__, __LINE__, __FUNCTION__, ##args); \
+    } while (0)
 
 #endif

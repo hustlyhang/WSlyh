@@ -19,7 +19,7 @@ pid_t GetPid() {
 // 静态变量初始化
 CLocker CRingLog::m_cLocker;
 CCond CRingLog::m_cCond;
-uint32_t CRingLog::m_uOneBuffLen = 30 * 1024 * 1024;//30MB
+uint32_t CRingLog::m_uOneBuffLen = 30 * 1024 * 1024;//30MB 单个日志单元大小
 
 
 CRingLog::CRingLog() :m_iBuffCnt(3), m_pCurBuf(nullptr), m_pPrstBuf(nullptr), m_pFp(nullptr), 
@@ -259,7 +259,7 @@ void CRingLog::PersistLog() {
     }
 }
 
-// 持久化线程入口函数
+
 void* ConFunc(void* arg) {
     CRingLog::GetInstance()->PersistLog();
     return nullptr;

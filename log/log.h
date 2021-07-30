@@ -58,25 +58,26 @@ struct UTC_Time {
 		return m_cache_sec;
 	}
 
+	char m_aTimeCache[20];
+	int m_year, m_month, m_day, m_hour, m_minute, m_sec;
+
 #ifdef DEBUG_TEST
 	void GetCurTime_debug() {
-		std::cout << time_cache << std::endl;
+		std::cout << m_aTimeCache << std::endl;
 		AddTimeSec();
-		std::cout << time_cache << std::endl;
+		std::cout << m_aTimeCache << std::endl;
 	}
 #endif // DEBUG
 
 private:
-	int m_year, m_month, m_day, m_hour, m_minute, m_sec;
 	uint64_t m_cache_sec, m_cache_min;      // 用来保存待比较的秒和分，如果相等就直接用缓存，不相等再更新
-	char time_cache[20];
 	// 将所有的时间更新后放入缓冲区
 	void AddTimeAll() {
-		snprintf(time_cache, 20, "%04d-%02d-%02d %02d:%02d:%02d", m_year, m_month, m_day, m_hour, m_minute, m_sec);
+		snprintf(m_aTimeCache, 20, "%04d-%02d-%02d %02d:%02d:%02d", m_year, m_month, m_day, m_hour, m_minute, m_sec);
 	}
 	// 只改变秒数，更新缓冲区里面的秒数即可
 	void AddTimeSec() {
-		snprintf(time_cache + 17, 3, "%02d", m_sec);
+		snprintf(m_aTimeCache + 17, 3, "%02d", m_sec);
 	}
 	void UpdateTime(struct timeval& tt) {
 		m_cache_sec = tt.tv_sec;
@@ -154,13 +155,13 @@ public:
 		return &rl;
 	}
 	void InitLogPath(const char* _logdir, const char * _prog_name, int _level);
-	int GetLevel() const { return m_iLevel; }
+	LOG_LEVEL GetLevel() const { return m_eLevel; }
 	void PersistLog();
 	void TryAppendLog(const char* _lvl, const char* format, ...);
 
 private:
 	CRingLog();
-	~CRingLog();
+	~CRingLog() {};
 	CRingLog(const CRingLog&) = delete;
 	CRingLog& operator = (const CRingLog&) = delete;
 	bool DecisFile(int _year, int _mon, int _day);
@@ -168,20 +169,21 @@ public:
 
 
 private:
-	int m_iBuffCnt;
+	int m_iBuffCnt;			// 日志节点个数
 	CBufferCell* m_pCurBuf, * m_pPrstBuf, * m_pLastBuf;
 	FILE* m_pFp;
 	pid_t m_Pid;
-	int m_iYear, m_iMon, m_iDay, m_iLogCnt;
+	int m_iYear, m_iMon, m_iDay;
+	int m_iLogCnt;			// 当天日志数量
 	char m_aProgName[MAX_PROG_NAME_LEN];
 	char m_aLogDir[MAX_LOG_DIR_LEN];
 	bool m_bEnv;		// 日记路径是否正确
-	int m_iLevel;
-	uint64_t m_uLastLogTime;
+	LOG_LEVEL m_eLevel;
+	uint64_t m_uLastLogFailTime;		// 上一次日志记录失败的时间
 	UTC_Time m_sTM;
 	static CLocker m_cLocker;
 	static CCond m_cCond;
-	static uint32_t m_uOneBuffLen;
+	static uint32_t m_uOneBuffLen;	// 单个日志节点最大长度
 };
 
 

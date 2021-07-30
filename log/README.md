@@ -1,8 +1,11 @@
-每次测试都printf，不太方便，准备实现一个日志类，记录日志
+测试的时候每次测试都printf，不太方便，准备实现一个日志类，记录日志
 因为主要是多线程，所以需要考虑线程安全，而且防止日志影响速度，实现同步和异步两种写入方式
 
+异步日志：
+    环状日志，循环双链表实现。这样方便后面的扩展
 
-杂：
+
+知识点：
     ✔int pthread_once(pthread_once_t *once_control, void (*init_routine) (void));
     此函数使用初值为PTHREAD_ONCE_INIT的once_control 变量保证init_routine()函数在本进程执行程序中仅执行一次
 
@@ -26,6 +29,11 @@
         ==> fprintf(stderr, "success!\n");
     ✔size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream);
 
+    ✔mkdir()
+    ✔strerror()
+    rename()
+
 
 优化：
     每次记录日志都会去获取时间，当线程数量很多的时候，这会影响到性能，想想怎么优化
+    不用每次都更新时间，只有当时间超过一分钟时才刷新整个时间缓冲区，应该可以快一点

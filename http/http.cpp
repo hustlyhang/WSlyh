@@ -1,10 +1,10 @@
 #include "http.h"
-#include <functional>
-
-
-#include "http.h"
 #include <string.h>
 #include <vector>
+#include <unistd.h> //fcntl close
+#include <fcntl.h>  //fcntl
+#include <sys/epoll.h>  // epoll
+#include <sys/uio.h>    // writev
 
 //协议解析
 void SHttpRequest::TryDecode(const std::string& buf) {
@@ -358,16 +358,96 @@ const HttpRequestDecodeState SHttpRequest::GetStatus() const {
 }
 
 // 文件操作符函数
+// 文件描述符非阻塞
+int SetNonBlocking(int _fd) {
+    int oldOption = fcntl(_fd, F_GETFL);
+    int newOption = oldOption | O_NONBLOCK;
+    fcntl(_fd, F_SETFL, newOption);
+    return oldOption;
+}
 
+// 向epoll中注册文件描述符
+void AddFd(int _epollFd, int _fd, bool _oneShot, int _triggerMode) {
+    epoll_event event;
+    event.data.fd = _fd;
+    if (_triggerMode == 1)
+        event.events = EPOLLIN | EPOLLRDHUP | EPOLLET; // 启用ET模式
+    else 
+        event.events = EPOLLIN | EPOLLRDHUP;           // 启用LT模式
 
+    if (_oneShot)
+        event.events |= EPOLLONESHOT;
+    epoll_ctl(_epollFd, EPOLL_CTL_ADD, _fd, &event);
+    
+    SetNonBlocking(_fd);
+}
+
+void RemoveFd(int _epollFd, int _fd) {
+    epoll_ctl(_epollFd, EPOLL_CTL_DEL, _fd, nullptr);
+    close(_fd);
+}
+
+// 事件触发后，需要重置oneshot
+void ModFd(int _epollFd, int _fd, int _event, int _triggerMode) {
+    epoll_event event;
+    event.data.fd = _fd;
+
+    if (_triggerMode == 1)
+        event.events = _event | EPOLLET | EPOLLONESHOT | EPOLLRDHUP;
+    else
+        event.events = _event | EPOLLONESHOT | EPOLLRDHUP;
+
+    epoll_ctl(_epollFd, EPOLL_CTL_MOD, _fd, &event);
+}
 
 
 // 静态变量初始化
 int CHttp::m_iEpollFd = -1;
 int CHttp::m_iHttpCnt = 0;
 
-void CHttp::Init(int _sockfd, const sockaddr_in& _addr) {
+void CHttp::Init(int _sockfd, const sockaddr_in& _addr, int _triggerMode) {
     m_iSockFd = _sockfd;
     m_sAddr = _addr;
+    m_iTriggerMode = _triggerMode;
 
+    AddFd(m_iEpollFd, _sockfd, true, m_iTriggerMode);
+    m_iHttpCnt++;
+
+    memset(m_aReadData, '\0', MAX_READ_DATA_BUFF_SIZE);
+    memset(m_aWriteData, '\0', MAX_WRITE_DATA_BUFF_SIZE);
+}
+
+bool CHttp::Read() {
+    // 检查缓冲区是否溢出
+    if (m_iReadIdx >= MAX_READ_DATA_BUFF_SIZE) {
+        LOG_INFO("读缓冲区溢出\n");
+        return false;
+    }
+
+    int recLen = 0;
+
+    if (m_iTriggerMode) {
+        // ET
+        while (true) {
+            // 需要一直读，直到错误是EAGAIN或EWOULDBLOCK才退出
+            recLen = recv(m_iSockFd, m_aReadData + m_iReadIdx, MAX_READ_DATA_BUFF_SIZE - m_iReadIdx, 0);
+            if (recLen == -1) {
+                // 报错
+                if (errno == EAGAIN || errno == EWOULDBLOCK)
+                    break;
+                return false;
+            }
+            else if (recLen == 0)
+                return false;
+            else m_iReadIdx += recLen;
+        }
+        return true;
+    }
+    else {
+        recLen = recv(m_iSockFd, m_aReadData + m_iReadIdx, MAX_READ_DATA_BUFF_SIZE - m_iReadIdx, 0);
+        if (recLen <= 0)
+            return false;
+        m_iReadIdx += recLen;
+        return true;
+    }
 }

@@ -1,7 +1,7 @@
 #include "../http/timer.h"
 #include <iostream>
 #include "../log/log.h"
-
+#include "../http/http.h"
 
 void cb_f(client_data* _client_data){
     printf("timer sock_fd is: %d, delay time is: %ld\n", _client_data->sock_fd, _client_data->timer->expire_time);
@@ -16,7 +16,8 @@ public:
     void test_log();
     int gettop();
     void init();
-
+    void CharArray(const char*);
+    void HttpTest();
 public:
     const char m_aLogDir[1024] = {"./ServerLog"};  //日志记录文件夹
 private:
@@ -77,6 +78,25 @@ void CUnitTest::test_timer() {
 }
 
 
+void CUnitTest::CharArray(const char* _charArray) {
+    int pos = 0;
+    while (_charArray[pos]) {
+        std::cout << _charArray[pos] << std::endl;
+        // printf("%c ", _charArray[pos]);
+        pos++;
+    }
+    printf("this len is: %d\n", pos);
+
+}
+void CUnitTest::HttpTest() {
+    // 测试http的网址解析是否正确
+    CHttp m_cHttp;
+    const char* str = {""};
+    int len = 1024;
+    m_cHttp.Test(str, len);
+    m_cHttp.Show();
+
+}
 /*****************log测试********************************/
 void CUnitTest::test_log() {
     UTC_Time m_sUtc;
@@ -96,7 +116,8 @@ int main() {
     printf("begin test!\n");
     // m_test2.test_timer();
     m_test2.test_log();
-    
+    //m_test2.CharArray("this is a test     ");
+    m_test2.HttpTest();
     return 0;
 }
 

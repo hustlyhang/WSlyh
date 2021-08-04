@@ -6,12 +6,9 @@
 #include <sys/epoll.h>  // epoll
 #include <sys/uio.h>    // writev
 
-//协议解析
-void SHttpRequest::TryDecode(const std::string& buf) {
-    this->ParseInternal(buf.c_str(), buf.size());
-}
 
-//解析请求行
+
+// 协议解析
 void SHttpRequest::ParseInternal(const char* buf, int size) {
 
     StringBuffer method;
@@ -450,4 +447,20 @@ bool CHttp::Read() {
         m_iReadIdx += recLen;
         return true;
     }
+}
+
+bool CHttp::ParseRead() {
+    // 处理读取到缓冲区的数据，如果不完整，返回false，并且继续监听可读事件
+    m_sHttpParse.ParseInternal(m_aReadData, m_iReadIdx);
+
+    if (m_sHttpParse.GetStatus() == HttpRequestDecodeState::COMPLETE ) {
+        // 解析成功后返回true
+        return true;
+    }
+    LOG_INFO("处理http请求错误，当前处理机状态%d, 当前内容%s", (int)m_sHttpParse.GetStatus(), m_aReadData);
+    return false;
+}
+
+bool CHttp::ParseWrite() {
+    // 处理玩家请求的数据
 }

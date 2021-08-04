@@ -4,13 +4,17 @@
 #include <map>
 #include <string>
 #include <sys/types.h>
-#include <sys/socket.h>	// 
+#include <sys/socket.h>	// stat
 #include <netinet/in.h>	// sockaddr_in
+#include <sys/stat.h>   // stat
 
 #define CR '\r'
 #define LF '\n'
 #define MAX_READ_DATA_BUFF_SIZE 5 * 1024 // 5k
 #define MAX_WRITE_DATA_BUFF_SIZE 5 * 1024 // 5k
+
+#define DEBUG_T
+
 typedef struct {
 	char* m_pBegin = nullptr;	//字符串开始位置
 	char* m_pEnd = nullptr;		//字符串结束位置
@@ -64,14 +68,6 @@ enum class HttpRequestDecodeState {
 
 
 struct SHttpRequest {
-
-    /**
-     * 解析http协议
-     * @param buf
-     * @return
-     */
-    void TryDecode(const std::string& buf);
-
     const std::string& GetMethod() const;
 
     const std::string& GetUrl() const;
@@ -87,8 +83,6 @@ struct SHttpRequest {
     const std::string& GetBody() const;
 
     const HttpRequestDecodeState GetStatus() const;
-
-private:
 
     void ParseInternal(const char* buf, int size);
 
@@ -121,10 +115,34 @@ public:
 
 	bool Read();			// loop中读取一次，根据le和et会有不同的实现
 	bool Write();			// loop中当收到EPOLLOUT时调用此函数将处理后的内容写入sock
-	void ParseRead();		// 对于收到的数据，解析出相应的数据
-	void ParseWrite();		// 根据解析出的数据，构建回送请求
+	bool ParseRead();		// 对于收到的数据，解析出相应的数据
+	bool ParseWrite();		// 根据解析出的数据，构建回送请求
 	void HttpParse();			// 线程池中需要调用的函数，不断分析当前所收到的数据
     void Init(int _sockfd, const sockaddr_in &_addr, int _triggerMode);
+#ifdef DEBUG_T
+    void Test(const char* _str, int _len) {
+        m_sHttpParse.ParseInternal(_str, _len);
+    }
+    void Show() {
+        std::cout << "Protocol" << m_sHttpParse.GetProtocol() << std::endl;
+        std::cout << "Method"<<m_sHttpParse.GetMethod() << std::endl;
+        std::cout << "tUrl"<<m_sHttpParse.GetUrl() << std::endl;
+        std::cout << "Version"<<m_sHttpParse.GetVersion() << std::endl;
+        std::cout << "Body" << m_sHttpParse.GetBody() << std::endl;
+        std::cout << "Header:" << std::endl;
+        for (auto x : m_sHttpParse.GetHeaders()) {
+            std::cout << x.first << std::endl;
+            std::cout << x.second << std::endl;
+        }
+        std::cout << "Header:" << std::endl;
+        for (auto x : m_sHttpParse.GetRequestParams()) {
+            std::cout << x.first << std::endl;
+            std::cout << x.second << std::endl;
+        }
+    }
+#endif // DEBUG
+
+
 public:
 	
 	static int m_iEpollFd;
@@ -138,5 +156,9 @@ private:
     int m_iTriggerMode;         // 触发模式 0 LT 1 ET
     int m_iReadIdx;             // 读缓冲区中当前读取内容位置
     SHttpRequest m_sHttpParse;
+
+    struct stat m_sFileStat;    // 文件
+    struct iovec m_sIv[2];
+    int m_iIvCount;
 };
 #endif

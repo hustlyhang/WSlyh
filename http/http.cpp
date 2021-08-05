@@ -401,7 +401,7 @@ void ModFd(int _epollFd, int _fd, int _event, int _triggerMode) {
 // 静态变量初始化
 int CHttp::m_iEpollFd = -1;
 int CHttp::m_iHttpCnt = 0;
-
+char CHttp::m_aFilePathPrefix[100] = "";
 void CHttp::Init(int _sockfd, const sockaddr_in& _addr, int _triggerMode) {
     m_iSockFd = _sockfd;
     m_sAddr = _addr;
@@ -463,4 +463,5 @@ bool CHttp::ParseRead() {
 
 bool CHttp::ParseWrite() {
     // 处理玩家请求的数据
+    // 先返回默认的页面
 }

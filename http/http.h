@@ -124,21 +124,18 @@ public:
         m_sHttpParse.ParseInternal(_str, _len);
     }
     void Show() {
-        std::cout << "Protocol" << m_sHttpParse.GetProtocol() << std::endl;
-        std::cout << "Method"<<m_sHttpParse.GetMethod() << std::endl;
-        std::cout << "tUrl"<<m_sHttpParse.GetUrl() << std::endl;
-        std::cout << "Version"<<m_sHttpParse.GetVersion() << std::endl;
-        std::cout << "Body" << m_sHttpParse.GetBody() << std::endl;
-        std::cout << "Header:" << std::endl;
-        for (auto x : m_sHttpParse.GetHeaders()) {
-            std::cout << x.first << std::endl;
-            std::cout << x.second << std::endl;
-        }
-        std::cout << "Header:" << std::endl;
-        for (auto x : m_sHttpParse.GetRequestParams()) {
-            std::cout << x.first << std::endl;
-            std::cout << x.second << std::endl;
-        }
+        LOG_INFO("Protocol:%s", m_sHttpParse.GetProtocol().c_str());
+        LOG_INFO("Method:%s", m_sHttpParse.GetMethod().c_str());
+        LOG_INFO("Url:%s", m_sHttpParse.GetUrl().c_str());
+        LOG_INFO("Version:%s", m_sHttpParse.GetVersion().c_str());
+        LOG_INFO("Body:%s", m_sHttpParse.GetBody().c_str());
+
+        for (auto x : m_sHttpParse.GetHeaders()) 
+            LOG_INFO("%s:%s", x.first.c_str(), x.second.c_str());
+
+        for (auto x : m_sHttpParse.GetRequestParams())
+            LOG_INFO("%s:%s", x.first.c_str(), x.second.c_str());
+        LOG_INFO("状态机目前状态为：%d", m_sHttpParse.GetStatus());
     }
 #endif // DEBUG
 
@@ -147,6 +144,7 @@ public:
 	
 	static int m_iEpollFd;
 	static int m_iHttpCnt;		// 所有连接数
+    static char m_aFilePathPrefix[100];   // 请求问价路径前缀
 private:
 	int m_iSockFd;		// http绑定的sock
 	sockaddr_in m_sAddr;// 记录连接的地址端口
@@ -160,5 +158,6 @@ private:
     struct stat m_sFileStat;    // 文件
     struct iovec m_sIv[2];
     int m_iIvCount;
+        
 };
 #endif

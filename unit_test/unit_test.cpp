@@ -91,10 +91,28 @@ void CUnitTest::CharArray(const char* _charArray) {
 void CUnitTest::HttpTest() {
     // 测试http的网址解析是否正确
     CHttp m_cHttp;
-    const char* str = {""};
-    int len = 1024;
+    //FILE* fp = fopen("E:/WSlyh/url.txt", "r");
+    //if (fp == nullptr) LOG_INFO("文件打开失败");
+    char *str = { R"(POST /OneCollector/1.0 HTTP/1.1
+Host: browser.events.data.msn.com
+Connection: keep-alive
+Content-Length: 3002
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36 Edg/92.0.902.62
+Content-Type: text/plain;charset=UTF-8
+Accept: */*
+Origin: https://ntp.msn.cn
+Accept-Encoding: gzip, deflate, br
+Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6
+Cookie: MUID=231480B5CA276512066590D5CB17641E)" };
+    LOG_INFO("%s", str);
+    for (int i = 0; i < 478; ++i) {
+        char tmp = str[i];
+    }
+    int len = 1253;
+    //fread(str, 1, 1024, fp);
     m_cHttp.Test(str, len);
     m_cHttp.Show();
+    // 没有回车符，测试失败
 
 }
 /*****************log测试********************************/
@@ -113,11 +131,13 @@ void CUnitTest::test_log() {
 
 int main() {
     CUnitTest m_test2;
-    printf("begin test!\n");
     // m_test2.test_timer();
     m_test2.test_log();
-    //m_test2.CharArray("this is a test     ");
-    m_test2.HttpTest();
+    // m_test2.CharArray("this is a test     ");
+    // m_test2.HttpTest();
+    
+    
+    
     return 0;
 }
 

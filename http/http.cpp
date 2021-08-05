@@ -5,9 +5,33 @@
 #include <fcntl.h>  //fcntl
 #include <sys/epoll.h>  // epoll
 #include <sys/uio.h>    // writev
+#include <stdarg.h> // va_start
+#include <sys/mman.h>   // mmap
 
+//定义http响应的一些状态信息
+const char* ok_200_title = "OK";
+const char* error_400_title = "Bad Request";
+const char* error_400_form = "Your request has bad syntax or is inherently impossible to staisfy.\n";
+const char* error_403_title = "Forbidden";
+const char* error_403_form = "You do not have permission to get file form this server.\n";
+const char* error_404_title = "Not Found";
+const char* error_404_form = "The requested file was not found on this server.\n";
+const char* error_500_title = "Internal Error";
+const char* error_500_form = "There was an unusual problem serving the request file.\n";
 
-
+// 结构体初始化
+void SHttpRequest::Init() {
+    m_eDecodeState = HttpRequestDecodeState::START;
+    m_iNextPos = 0;
+    m_bIsOpen = false;
+    m_strBody.clear();
+    m_mHeaders.clear();
+    m_strMethod.clear();
+    m_strProtocol.clear();
+    m_strUrl.clear();
+    m_strVersion.clear();
+    m_mRequestParams.clear();
+}
 // 协议解析
 void SHttpRequest::ParseInternal(const char* buf, int size) {
 
@@ -253,7 +277,7 @@ void SHttpRequest::ParseInternal(const char* buf, int size) {
         case HttpRequestDecodeState::HEADER_VALUE: {
             if (ch == CR) {
                 headerValue.m_pEnd = p;
-                m_strHeaders.insert({ headerKey, headerValue });
+                m_mHeaders.insert({ headerKey, headerValue });
                 m_eDecodeState = HttpRequestDecodeState::WHEN_CR;
             }
             break;
@@ -286,8 +310,8 @@ void SHttpRequest::ParseInternal(const char* buf, int size) {
         case HttpRequestDecodeState::CR_LF_CR: {
             if (ch == LF) {
                 //如果是\r接着\n 那么判断是不是需要解析请求体
-                if (m_strHeaders.count("Content-Length") > 0) {
-                    bodyLength = atoi(m_strHeaders["Content-Length"].c_str());
+                if (m_mHeaders.count("Content-Length") > 0) {
+                    bodyLength = atoi(m_mHeaders["Content-Length"].c_str());
                     if (bodyLength > 0) {
                         m_eDecodeState = HttpRequestDecodeState::BODY;//解析请求体
                     }
@@ -322,6 +346,10 @@ void SHttpRequest::ParseInternal(const char* buf, int size) {
     }
 }
 
+int SHttpRequest::GetLen() {
+    return m_iNextPos;
+}
+
 const std::string& SHttpRequest::GetMethod() const {
     return m_strMethod;
 }
@@ -343,7 +371,7 @@ const std::string& SHttpRequest::GetVersion() const {
 }
 
 const std::map<std::string, std::string>& SHttpRequest::GetHeaders() const {
-    return m_strHeaders;
+    return m_mHeaders;
 }
 
 const std::string& SHttpRequest::GetBody() const {
@@ -402,6 +430,7 @@ void ModFd(int _epollFd, int _fd, int _event, int _triggerMode) {
 int CHttp::m_iEpollFd = -1;
 int CHttp::m_iHttpCnt = 0;
 char CHttp::m_aFilePathPrefix[100] = "";
+
 void CHttp::Init(int _sockfd, const sockaddr_in& _addr, int _triggerMode) {
     m_iSockFd = _sockfd;
     m_sAddr = _addr;
@@ -409,9 +438,30 @@ void CHttp::Init(int _sockfd, const sockaddr_in& _addr, int _triggerMode) {
 
     AddFd(m_iEpollFd, _sockfd, true, m_iTriggerMode);
     m_iHttpCnt++;
+    
+    m_iReadIdx = 0;
+    m_iWriteIdx = 0;
 
     memset(m_aReadData, '\0', MAX_READ_DATA_BUFF_SIZE);
     memset(m_aWriteData, '\0', MAX_WRITE_DATA_BUFF_SIZE);
+
+    m_sHttpParse.Init();
+}
+
+void CHttp::CloseHttp() {
+    if (m_iSockFd == -1)
+        return;
+    LOG_INFO("close %d", m_iSockFd);
+    RemoveFd(m_iEpollFd, m_iSockFd);
+    m_iSockFd = -1;
+    m_iHttpCnt--;
+}
+
+void CHttp::unmmap() {
+    if (m_pFileAddr) {
+        munmap(m_pFileAddr, m_sFileStat.st_size);
+        m_pFileAddr = nullptr;
+    }
 }
 
 bool CHttp::Read() {
@@ -449,19 +499,139 @@ bool CHttp::Read() {
     }
 }
 
-bool CHttp::ParseRead() {
-    // 处理读取到缓冲区的数据，如果不完整，返回false，并且继续监听可读事件
-    m_sHttpParse.ParseInternal(m_aReadData, m_iReadIdx);
+bool CHttp::Write() {
 
-    if (m_sHttpParse.GetStatus() == HttpRequestDecodeState::COMPLETE ) {
-        // 解析成功后返回true
-        return true;
-    }
-    LOG_INFO("处理http请求错误，当前处理机状态%d, 当前内容%s", (int)m_sHttpParse.GetStatus(), m_aReadData);
-    return false;
 }
 
-bool CHttp::ParseWrite() {
-    // 处理玩家请求的数据
+HttpRequestDecodeState CHttp::ParseRead() {
+    // 处理读取到缓冲区的数据，如果不完整，返回false，并且继续监听可读事件
+    m_sHttpParse.ParseInternal(m_aReadData, m_iReadIdx);
+    HttpRequestDecodeState status = m_sHttpParse.GetStatus();
+    LOG_INFO("处理http请求错误，当前处理机状态%d, 当前内容%s", (int)status, m_aReadData);
+    if (m_sHttpParse.GetLen() == m_iReadIdx) {
+        // 说明读到了末尾
+        if (status != HttpRequestDecodeState::INVALID_VERSION &&
+            status != HttpRequestDecodeState::INVALID &&
+            status != HttpRequestDecodeState::INVALID_HEADER &&
+            status != HttpRequestDecodeState::INVALID_METHOD &&
+            status != HttpRequestDecodeState::INVALID_URI) {
+            return HttpRequestDecodeState::OPEN;
+        }
+    }
+    return m_sHttpParse.GetStatus();
+}
+
+bool CHttp::AddLine(const char* _format, ...) {
+    if (m_iWriteIdx >= MAX_WRITE_DATA_BUFF_SIZE) {
+        
+        return false;
+    }
+    va_list arglist;
+    va_start(arglist, _format);
+    int len = vsnprintf(m_aWriteData + m_iWriteIdx, MAX_WRITE_DATA_BUFF_SIZE - 1 - m_iWriteIdx, _format, arglist);
+    if (len >= MAX_WRITE_DATA_BUFF_SIZE - 1 - m_iWriteIdx) {
+        // 长度超出限制
+        va_end(arglist);
+        LOG_ERROR("写缓冲区溢出");
+        return false;
+    }
+    m_iWriteIdx += len;
+    va_end(arglist);
+    LOG_INFO("add line:%s", m_aWriteData + m_iWriteIdx - len);
+    return true;
+}
+
+bool CHttp::AddStatusLine(int _status, const char* _title) {
+    return AddLine("%s %d %s\r\n", "HTTP/1.1", _status, _title);
+}
+bool CHttp::AddHeaders(int _contentlen) {
+    return AddContentLength(_contentlen) && AddLinger() &&
+        AddBlankLine()&& AddContentType();
+}
+bool CHttp::AddContentLength(int _contentlen) {
+    return AddLine("Content-Length:%d\r\n", _contentlen);
+}
+bool CHttp::AddContentType() {
+    return AddLine("Content-Type:%s\r\n", "text/html");
+}
+bool CHttp::AddLinger() {
+    return AddLine("Connection:%s\r\n", (m_bLinger == true) ? "keep-alive" : "close");
+}
+bool CHttp::AddBlankLine() {
+    return AddLine("%s", "\r\n");
+}
+bool CHttp::AddContent(const char* _content) {
+    return AddLine("%s", _content);
+}
+
+bool CHttp::ParseWrite(HttpRequestDecodeState _status) {
+    // 处理玩家请求的数据，分析请求的结果是否正确，
     // 先返回默认的页面
+    if (_status == HttpRequestDecodeState::INVALID_VERSION ||
+        _status == HttpRequestDecodeState::INVALID ||
+        _status == HttpRequestDecodeState::INVALID_HEADER ||
+        _status == HttpRequestDecodeState::INVALID_METHOD ||
+        _status == HttpRequestDecodeState::INVALID_URI) {
+        // http请求出现问题
+        AddStatusLine(400, error_400_title);
+        AddHeaders(strlen(error_400_form));
+        return AddContent(error_400_form);
+    }
+    else if (_status == HttpRequestDecodeState::COMPLETE) {
+        // 解析完成
+        
+        // 先返回默认页面,这些判断后续会用到
+        if (stat(m_aFile, &m_sFileStat) < 0) {
+            LOG_ERROR("获取默认页面文件属性失败");
+            AddStatusLine(404, error_404_title);
+            AddHeaders(strlen(error_404_form));
+            return AddContent(error_404_form);
+        }
+        if (!(m_sFileStat.st_mode & S_IROTH)) {
+            AddStatusLine(403, error_403_title);
+            AddHeaders(strlen(error_403_form));
+            return AddContent(error_403_form);
+        }
+        // 判断请求的文件是不是目录
+        if (S_ISDIR(m_sFileStat.st_mode)) {
+            AddStatusLine(404, error_404_title);
+            AddHeaders(strlen(error_404_form));
+            return AddContent(error_404_form);
+        }
+        // 请求的文件没有问题，将文件映射到缓冲区中
+        int fd = open(m_aFile, O_RDONLY);
+        m_pFileAddr = (char*)mmap(0, m_sFileStat.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+        close(fd);
+        AddStatusLine(200, ok_200_title);
+        AddHeaders(m_sFileStat.st_size);
+        m_sIv[0].iov_base = m_aWriteData;
+        m_sIv[0].iov_len = m_iWriteIdx;
+        m_sIv[1].iov_base = m_pFileAddr;
+        m_sIv[1].iov_len = m_sFileStat.st_size;
+        m_iIvCount = 2;
+        m_iDateLen = m_iWriteIdx + m_sFileStat.st_size;
+        return true;
+    }
+    else {
+        AddStatusLine(500, error_500_title);
+        AddHeaders(strlen(error_500_form));
+        return AddContent(error_500_form);
+    }
+}
+
+void CHttp::HttpParse() {
+    HttpRequestDecodeState status = ParseRead();
+    if (status == HttpRequestDecodeState::OPEN) {
+        // 当还没有接收完数据时，需要重新监听
+        ModFd(m_iEpollFd, m_iSockFd, EPOLLIN, m_iTriggerMode);
+        return;
+    }
+    bool ret = ParseWrite(status);
+    if (!ret) {
+        // 说明请求中除了问题，关闭连接
+        CloseHttp();
+        return;
+    }
+    // 没有问题就改变m_iSockFd的监听事件
+    ModFd(m_iEpollFd, m_iSockFd, EPOLLOUT, m_iTriggerMode);
 }

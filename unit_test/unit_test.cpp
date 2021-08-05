@@ -105,8 +105,10 @@ Accept-Encoding: gzip, deflate, br
 Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6
 Cookie: MUID=231480B5CA276512066590D5CB17641E)" };
     LOG_INFO("%s", str);
-    for (int i = 0; i < 478; ++i) {
-        char tmp = str[i];
+    char _test[10] = "123456789";
+    for (int i = 0; i < 10; ++i) {
+        char tmp = _test[i];
+        LOG_INFO("%c", tmp);
     }
     int len = 1253;
     //fread(str, 1, 1024, fp);
@@ -134,7 +136,7 @@ int main() {
     // m_test2.test_timer();
     m_test2.test_log();
     // m_test2.CharArray("this is a test     ");
-    // m_test2.HttpTest();
+    m_test2.HttpTest();
     
     
     

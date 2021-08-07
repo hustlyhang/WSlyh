@@ -1,103 +1,103 @@
 #include "timer.h"
 #include <string.h>
 
-HeapTimer::HeapTimer(int delaytime) {
-    this->expire_time = time(NULL) + delaytime;
+CHeapTimer::CHeapTimer(int _delaytime) {
+    this->m_iExpireTime = time(NULL) + _delaytime;
 }
 
 
-TimerHeap::TimerHeap(int _capacity):m_capacity(_capacity), m_cur_num(0) {
-    m_timer_array = new HeapTimer*[m_capacity](); 
-    if (!m_timer_array) throw std::exception();
+CTimerHeap::CTimerHeap(int _capacity):m_iCapacity(_capacity), m_iCurNum(0) {
+    m_aTimers = new CHeapTimer*[m_iCapacity](); 
+    if (!m_aTimers) throw std::exception();
 }
 
-TimerHeap::~TimerHeap() {
-    delete [] m_timer_array;
-    for (int i = 0; i < m_cur_num; ++i) m_timer_array[i] = nullptr;
+CTimerHeap::~CTimerHeap() {
+    delete [] m_aTimers;
+    for (int i = 0; i < m_iCurNum; ++i) m_aTimers[i] = nullptr;
 }
 
 
-void TimerHeap::heap_down(int heap_node) {
-    HeapTimer* tmp_timer = m_timer_array[heap_node];
+void CTimerHeap::HeapDown(int heap_node) {
+    CHeapTimer* tmp_timer = m_aTimers[heap_node];
 
     int child = 0;
-    for (; heap_node * 2 + 1 < m_cur_num; heap_node = child) {
+    for (; heap_node * 2 + 1 < m_iCurNum; heap_node = child) {
         child = heap_node * 2 + 1;
-        if (child + 1 < m_cur_num && m_timer_array[child + 1]->expire_time < m_timer_array[child]->expire_time) child++;
-        if (tmp_timer->expire_time > m_timer_array[child]->expire_time) {
-            m_timer_array[heap_node] = m_timer_array[child];
+        if (child + 1 < m_iCurNum && m_aTimers[child + 1]->m_iExpireTime < m_aTimers[child]->m_iExpireTime) child++;
+        if (tmp_timer->m_iExpireTime > m_aTimers[child]->m_iExpireTime) {
+            m_aTimers[heap_node] = m_aTimers[child];
         }
         else break;
     }
-    m_timer_array[heap_node] = tmp_timer;
+    m_aTimers[heap_node] = tmp_timer;
 }
 
-void TimerHeap::add_timer(HeapTimer* add_timer) {
+void CTimerHeap::AddTimer(CHeapTimer* add_timer) {
     if (!add_timer) return;
-    if (m_cur_num >= m_capacity) resize();
+    if (m_iCurNum >= m_iCapacity) Resize();
     
-    int last_node = m_cur_num++;
+    int last_node = m_iCurNum++;
     int parent = 0;
 
     // 新加入的节点在最后，向上调整
     for( ; last_node > 0; last_node = parent ) {
         parent = ( last_node - 1 ) / 2;
-        if( m_timer_array[parent]->expire_time > add_timer->expire_time ) {
-            m_timer_array[last_node] = m_timer_array[parent];
+        if( m_aTimers[parent]->m_iExpireTime > add_timer->m_iExpireTime ) {
+            m_aTimers[last_node] = m_aTimers[parent];
         } 
         else {
             break;
         }
     }
-    m_timer_array[last_node] = add_timer;
+    m_aTimers[last_node] = add_timer;
 }
 
-void TimerHeap::del_timer( HeapTimer* del_timer ) {
+void CTimerHeap::DelTimer( CHeapTimer* del_timer ) {
     if( !del_timer ) return;
     
     del_timer->callback_func = nullptr;
 }
 
-void TimerHeap::pop_timer() {
-    if(!m_cur_num) return;
-    if(m_timer_array[0]) {
-        m_timer_array[0] = m_timer_array[--m_cur_num];
-        delete m_timer_array[m_cur_num];
-        m_timer_array[m_cur_num] = nullptr;
-        heap_down(0);  // 对新的根节点进行下滤
+void CTimerHeap::PopTimer() {
+    if(!m_iCurNum) return;
+    if(m_aTimers[0]) {
+        m_aTimers[0] = m_aTimers[--m_iCurNum];
+        delete m_aTimers[m_iCurNum];
+        m_aTimers[m_iCurNum] = nullptr;
+        HeapDown(0);  // 对新的根节点进行下滤
     }
 }
 
-void TimerHeap::tick() {
-    HeapTimer* tmp_timer = m_timer_array[0];
+void CTimerHeap::Tick() {
+    CHeapTimer* tmp_timer = m_aTimers[0];
     time_t cur_time = time(NULL);
     printf("now time is %ld\n", cur_time);
-    while(m_cur_num) {
+    while(m_iCurNum) {
         printf("loop\n");
         if(!tmp_timer) break;
-        printf("timer time is %ld\n", tmp_timer->expire_time);
-        if(tmp_timer->expire_time > cur_time) break;
-        if(m_timer_array[0]->callback_func) {
+        printf("timer time is %ld\n", tmp_timer->m_iExpireTime);
+        if(tmp_timer->m_iExpireTime > cur_time) break;
+        if(m_aTimers[0]->callback_func) {
             printf("call_back\n");
-            m_timer_array[0]->callback_func(m_timer_array[0]->m_client_data);
+            m_aTimers[0]->callback_func(m_aTimers[0]->m_sClientData);
         }
-        pop_timer();
-        tmp_timer = m_timer_array[0];
+        PopTimer();
+        tmp_timer = m_aTimers[0];
     }
 }
 
-void TimerHeap::resize() {
-    HeapTimer** tmp = new HeapTimer*[m_capacity * 2]();
+void CTimerHeap::Resize() {
+    CHeapTimer** tmp = new CHeapTimer*[m_iCapacity * 2]();
     if(!tmp) throw std::exception();
-    memcpy(tmp, m_timer_array, m_cur_num);
-    m_capacity *= 2;
-    delete[] m_timer_array;
-    m_timer_array = tmp;
+    memcpy(tmp, m_aTimers, m_iCurNum);
+    m_iCapacity *= 2;
+    delete[] m_aTimers;
+    m_aTimers = tmp;
 }
 
-HeapTimer* TimerHeap::getTop(){
-    if (m_cur_num != 0) {
-        return m_timer_array[0];
+CHeapTimer* CTimerHeap::GetTop(){
+    if (m_iCurNum != 0) {
+        return m_aTimers[0];
     }
     return nullptr;
 }

@@ -1,19 +1,76 @@
 #include "log.h"
 #include <sys/syscall.h>	//system call
 #include <errno.h>
-#include <unistd.h>//access, getpid
-#include <assert.h>//assert
-#include <stdarg.h>//va_list
-#include <sys/stat.h>//mkdir
+#include <unistd.h>     //access, getpid
+#include <assert.h>     //assert
+#include <stdarg.h>     //va_list
+#include <sys/stat.h>   //mkdir
+#include <sys/shm.h>    //for shmxxx
+#include <sys/types.h>  //for ipc key
 
 #define ONELOGFILELIMIT (1u * 1024 * 1024 * 1024)
 #define LOGFILEMEMLIMIT (3u * 1024 * 1024 * 1024)
 #define ONELOGLEN (4 * 1024) //4K
 #define RELOGTHRESOLD 5
 #define LOGWAITTIME 1       // 当持久化失败时等待信号的时间
+#define SHMKEY 500234       // 共享内存key
+
+const char* curexelink = "/proc/self/exe";
 
 pid_t GetPid() {
 	return syscall(__NR_gettid);
+}
+
+// 在共享内存中创建CellBuffer
+CBufferCell* CreateCellBuffer(key_t _shmKey, uint32_t _dataLen) {
+    // 创建共享内存段
+    int shmId = shmget(_shmKey, sizeof(CBufferCell) + _dataLen, IPC_CREAT | IPC_EXCL | 0666);
+    if (shmId == -1 && errno == EEXIST)
+        shmId = shmget(_shmKey, sizeof(CBufferCell) + _dataLen, 0666);
+    if (shmId == -1) {
+        perror("shmget wrong\n");
+        return nullptr;
+    }
+    CBufferCell* bc = (CBufferCell*)shmat(shmId, 0, 0);
+    *bc = CBufferCell(shmId, _dataLen);
+    bc->m_aData = (char*)bc + sizeof(CBufferCell);
+    return bc;
+}
+
+/*
+    清理之前绑定的共享内存，同时返回shmid
+    根据当前运行的程序以及自己设定的一个值来生成唯一shmkey
+    这个唯一的shmkey可以获取到一块共享内存，内存里面填的获取cellbuffer的shmid
+    获取到这个id后就可以遍历整个环状日志
+*/ 
+int GetPrstCBShmId() {
+    char exePatch[4069] = {};
+    int cnt = readlink(curexelink, exePatch, 4069);
+    if (cnt < 0 || cnt > 4069) return -1;
+    key_t shmKey = ftok(exePatch, SHMKEY);
+    int shmId = shmget(shmKey, sizeof(int*), IPC_CREAT | IPC_EXCL | 0666);
+    if (shmId == -1 && errno == EEXIST) {
+        shmId = shmget(shmKey, sizeof(int*), 0666);
+        // 把之前绑定的共享内存解绑
+        int* CBShmId = (int*)shmat(shmId, 0, 0);
+        int headCBShmId = *CBShmId;
+        int curCBShmId = headCBShmId;
+        int nextCBShmId;
+        do {
+            CBufferCell* CB = (CBufferCell*)shmat(curCBShmId, 0, 0);
+            if (!CB) {
+                perror("shmat wrong\n");
+                break;
+            }
+            nextCBShmId = CB->m_iNextShmId;
+            shmdt((void*)CB);
+            shmctl(curCBShmId, IPC_RMID, nullptr);
+            curCBShmId = nextCBShmId;
+        } while (headCBShmId != curCBShmId);
+
+    }
+    if (shmId == -1) perror("shmget wrong!\n");
+    return shmId;
 }
 
 // 静态变量初始化
@@ -23,9 +80,14 @@ uint32_t CRingLog::m_uOneBuffLen = 30 * 1024 * 1024;//30MB 单个日志单元大小
 
 
 CRingLog::CRingLog() :m_iBuffCnt(3), m_pCurBuf(nullptr), m_pPrstBuf(nullptr), m_pFp(nullptr), 
-						m_iLogCnt(0), m_bEnv(false), m_eLevel((LOG_LEVEL)0), m_uLastLogFailTime(0), m_sTM() {
+						m_iLogCnt(0), m_bEnv(false), m_eLevel((LOG_LEVEL)0), m_uLastLogFailTime(0), m_sTM(), m_pPrstBCShmId(nullptr){
 	// 创建双链表
-    CBufferCell* head = new CBufferCell(m_uOneBuffLen);
+    // 保存CB环的共享内存地址
+    int shmId = GetPrstCBShmId();
+    if (shmId == -1) exit(1);
+    // 拿到指向共享内存的指针
+    m_pPrstBCShmId = (int*)shmat(shmId, 0, 0);
+    CBufferCell* head = CreateCellBuffer(SHMKEY, m_uOneBuffLen);
     if (!head)
     {
         fprintf(stderr, "no space to allocate cell_buffer\n");
@@ -36,22 +98,29 @@ CRingLog::CRingLog() :m_iBuffCnt(3), m_pCurBuf(nullptr), m_pPrstBuf(nullptr), m_
 
     for (int i = 1; i < m_iBuffCnt; ++i)
     {
-        current = new CBufferCell(m_uOneBuffLen);
+        current = CreateCellBuffer(SHMKEY + 1, m_uOneBuffLen);
         if (!current)
         {
             fprintf(stderr, "no space to allocate cell_buffer\n");
             exit(1);
         }
         current->m_pPre = prev;
+        current->m_iPreShmId = prev->m_iShmId;
         prev->m_pNext = current;
+        prev->m_iNextShmId = current->m_iShmId;
         prev = current;
     }
     prev->m_pNext = head;
+    prev->m_iNextShmId = head->m_iShmId;
     head->m_pPre = prev;
+    head->m_iPreShmId = prev->m_iShmId;
 
     // 将当前指针和持久化指针都指向双循环链表的头节点
     m_pCurBuf = head;
     m_pPrstBuf = head;
+
+    // 更新
+    *m_pPrstBCShmId = m_pPrstBuf->m_iShmId;
 
     m_Pid = GetPid();
 }
@@ -172,7 +241,6 @@ void CRingLog::TryAppendLog(const char* _lvl, const char* _format, ...) {
             CBufferCell* nextBuf = m_pCurBuf->m_pNext;
             // 当前这个单元可以持久化了，可以通知消费线程，修改标志状态
             backFlag = true;
-
             // 如果下一个单元待持久化，那么说明满了，要么扩容，要么报错
             if (nextBuf->m_eStatus == CBufferCell::BUFFER_STATUS::FULL) {
                 // 检查当前容量,超过了就报错
@@ -183,18 +251,23 @@ void CRingLog::TryAppendLog(const char* _lvl, const char* _format, ...) {
                 }
                 else {
                     // 扩增一个单元
-                    CBufferCell* newBuffer = new CBufferCell(m_uOneBuffLen);
+                    CBufferCell* newBuffer = CreateCellBuffer(SHMKEY + m_iBuffCnt, m_uOneBuffLen);
                     m_iBuffCnt += 1;
                     newBuffer->m_pPre = m_pCurBuf;
+                    newBuffer->m_iPreShmId = m_pCurBuf->m_iShmId;
                     m_pCurBuf->m_pNext = newBuffer;
+                    m_pCurBuf->m_iNextShmId = newBuffer->m_iShmId;
                     newBuffer->m_pNext = nextBuf;
+                    newBuffer->m_iNextShmId = nextBuf->m_iShmId;
                     nextBuf->m_pPre = newBuffer;
+                    nextBuf->m_iPreShmId = newBuffer->m_iShmId;
                     m_pCurBuf = newBuffer;
                 }
             }
             else {
                 m_pCurBuf = nextBuf;
             }
+            // 还能扩容的话就写入
             if (!m_uLastLogFailTime)
                 m_pCurBuf->Append(logLine, logLen);
         }
@@ -225,6 +298,7 @@ void CRingLog::PersistLog() {
             m_cCond.wait_time(m_cLocker.get(), tTs);
         }
 
+        //  还没有开始写日志
         if (m_pPrstBuf->IsEmpty()) {
             m_cLocker.unlock();
             continue;
@@ -232,7 +306,7 @@ void CRingLog::PersistLog() {
 
         if (m_pPrstBuf->m_eStatus == CBufferCell::BUFFER_STATUS::FREE) {
             // 如果还是free，那么直接改为full，继续往下
-            // 判断写入指针和持久化时针是否是同一个
+            // 判断写入指针和持久化时针是否是同一个，因为如果不是的话，当前持久化指针所指向的buffer肯定是FULL
             assert(m_pCurBuf == m_pPrstBuf);
             // 将当前状态改为full然后将写入指针往下移动
             m_pCurBuf->m_eStatus = CBufferCell::BUFFER_STATUS::FULL;
@@ -255,6 +329,7 @@ void CRingLog::PersistLog() {
         m_cLocker.lock();
         m_pPrstBuf->ClearBuffer();
         m_pPrstBuf = m_pPrstBuf->m_pNext;
+        *m_pPrstBCShmId = m_pPrstBuf->m_iShmId;
         m_cLocker.unlock();
     }
 }

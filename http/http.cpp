@@ -471,7 +471,7 @@ bool CHttp::Read() {
         return false;
     }
 
-    int recLen = 0;
+    ssize_t recLen = 0;
 
     if (m_iTriggerMode) {
         // ET

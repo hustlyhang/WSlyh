@@ -97,15 +97,15 @@ private:
 // 内存块，用于存储日志
 class CBufferCell {
 public:
-	CBufferCell(uint32_t _len): m_eStatus(BUFFER_STATUS::FREE), m_pPre(nullptr), m_pNext(nullptr), m_uTolLength(_len), m_uCurLength(0){
-		m_data = new char[m_uTolLength]();
-		if (!m_data) {
+	CBufferCell(int _shmId, uint32_t _len): m_eStatus(BUFFER_STATUS::FREE), m_iShmId(_shmId), m_pPre(nullptr), m_pNext(nullptr), m_iPreShmId(-1), m_iNextShmId(-1), m_uTolLength(_len), m_uCurLength(0){
+		m_aData = new char[m_uTolLength]();
+		if (!m_aData) {
 			fprintf(stderr, "Have no enough memory!!!!!!!!\n");
 			exit(1);
 		}
 	}
-	CBufferCell(const CBufferCell&) = delete;
-	CBufferCell& operator = (const CBufferCell&) = delete;
+	/*CBufferCell(const CBufferCell&) = delete;
+	CBufferCell& operator = (const CBufferCell&) = delete;*/
 
 	uint32_t GetFreeLen() {
 		return m_uTolLength - m_uCurLength;
@@ -117,18 +117,18 @@ public:
 
 	void Append(const char* _log_data, uint32_t _len) {
 		if (GetFreeLen() < _len) return;
-		memcpy(m_data + m_uCurLength, _log_data, (size_t)_len);
+		memcpy(m_aData + m_uCurLength, _log_data, (size_t)_len);
 		m_uCurLength += _len;
 	}
 
 	void ClearBuffer() {
 		m_uCurLength = 0;
-		memset(m_data, '\0', m_uTolLength);
+		memset(m_aData, '\0', m_uTolLength);
 		m_eStatus = BUFFER_STATUS::FREE;
 	}
 
 	void Persist(FILE* _fp) {
-		uint32_t tmpWriteLen = fwrite(m_data, 1, m_uCurLength, _fp);
+		size_t tmpWriteLen = fwrite(m_aData, 1, m_uCurLength, _fp);
 		if (tmpWriteLen != m_uCurLength) {
 			fprintf(stderr, "Write file fail!!!!!!!  write len : %d\n", tmpWriteLen);
 		}
@@ -140,10 +140,13 @@ public:
 		FULL
 	};
 	BUFFER_STATUS m_eStatus;
+	int m_iPreShmId;
+	int m_iNextShmId;
 	CBufferCell* m_pPre;
 	CBufferCell* m_pNext;
+	int m_iShmId;
+	char* m_aData;
 private:
-	char* m_data;
 	uint32_t m_uTolLength;
 	uint32_t m_uCurLength;
 };
@@ -185,6 +188,7 @@ private:
 	static CLocker m_cLocker;
 	static CCond m_cCond;
 	static uint32_t m_uOneBuffLen;	// 单个日志节点最大长度
+	int* m_pPrstBCShmId;			// 记录当前持久化buffer共享内存的id
 };
 
 // 持久化线程入口函数

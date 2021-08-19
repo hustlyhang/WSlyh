@@ -122,13 +122,20 @@ void CUnitTest::test_log() {
     UTC_Time m_sUtc;
     m_sUtc.GetCurTime_debug();
     CRingLog* log = CRingLog::GetInstance();
-    LOG_INIT(m_aLogDir, "WebServer", (int)LOG_LEVEL::TRACE);
-    LOG_INFO("this is a test%d", 14);
-    LOG_DEBUG("this is a test%d", 15);
-    LOG_FATAL("this is a test%d %s", 16, "fsdfs");
-
+    LOG_INIT(m_aLogDir, "WebServer", (int)LOG_LEVEL::TRACE); 
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    uint64_t start_ts = (int64_t)tv.tv_sec * 1000 + tv.tv_usec / 1000;
+    for (int i = 0; i < 1e8; ++i){
+        LOG_ERROR("my number is number my number is my number is my number is my number is my number is my number is %d", i);
+    }
+    gettimeofday(&tv, NULL);
+    uint64_t end_ts = (int64_t)tv.tv_sec * 1000 + tv.tv_usec / 1000;
+    printf("time use %lums\n", end_ts - start_ts);
 }
 
+
+#ifdef DEBUG
 
 
 int main() {
@@ -136,12 +143,14 @@ int main() {
     // m_test2.test_timer();
     m_test2.test_log();
     // m_test2.CharArray("this is a test     ");
-    m_test2.HttpTest();
-    
-    
-    
+    // m_test2.HttpTest();
+
     return 0;
 }
+
+#endif // DEBUG
+
+
 
 /*
 test:

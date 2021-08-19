@@ -127,72 +127,72 @@ CRingLog::CRingLog() :m_iBuffCnt(3), m_pCurBuf(nullptr), m_pPrstBuf(nullptr), m_
 
 // 初始化日志路径
 void CRingLog::InitLogPath(const char* _logdir, const char* _prog_name, int _level) {
-    strncpy(m_aLogDir, _logdir, MAX_LOG_DIR_LEN);
-    strncpy(m_aProgName, _prog_name, MAX_PROG_NAME_LEN);
+	strncpy(m_aLogDir, _logdir, MAX_LOG_DIR_LEN);
+	strncpy(m_aProgName, _prog_name, MAX_PROG_NAME_LEN);
 
-    mkdir(m_aLogDir, 0777);
+	mkdir(m_aLogDir, 0777);
 
-    if (access(m_aLogDir, F_OK | W_OK) == -1)
-        fprintf(stderr, "mkdir %s fail! error: %s\n", m_aLogDir, strerror(errno));
-    else
-        m_bEnv = true;
-    if (_level > (int)LOG_LEVEL::TRACE)
-        m_eLevel = LOG_LEVEL::TRACE;
-    if (_level < (int)LOG_LEVEL::FATAL)
-        m_eLevel = LOG_LEVEL::FATAL;
-    m_eLevel = (LOG_LEVEL)_level;
+	if (access(m_aLogDir, F_OK | W_OK) == -1)
+		fprintf(stderr, "mkdir %s fail! error: %s\n", m_aLogDir, strerror(errno));
+	else
+		m_bEnv = true;
+	if (_level > (int)LOG_LEVEL::TRACE)
+		m_eLevel = LOG_LEVEL::TRACE;
+	if (_level < (int)LOG_LEVEL::FATAL)
+		m_eLevel = LOG_LEVEL::FATAL;
+	m_eLevel = (LOG_LEVEL)_level;
 }
 
 // 处理打开的日志文件
 bool CRingLog::DecisFile(int _year, int _mon, int _day) {
-    // 首先检查环境是否ok
-    if (!m_bEnv) {
-        if (m_pFp) 
-            fclose(m_pFp);
-        // 重定向
-        m_pFp = fopen("/null", "w");
-        return m_pFp != nullptr;
-    }
-    // 如果还没有打开文件
-    if (!m_pFp) {
-        m_iYear = _year;
-        m_iDay = _day;
-        m_iMon = _mon;
-        char logPath[1024] = {};
-        sprintf(logPath, "%s/%s.%d%02d%02d.%u.log", m_aLogDir, m_aProgName, m_iYear, m_iMon, m_iDay, m_Pid);
-        m_pFp = fopen(logPath, "w");
-        if (m_pFp)
-            m_iLogCnt++;
-    }
-    else if (m_iDay != _day) {
-        // 天数更新，新建日志文件
-        fclose(m_pFp);
-        m_iDay = _day;
-        char logPath[1024] = {};
-        sprintf(logPath, "%s/%s.%d%02d%02d.%u.log", m_aLogDir, m_aProgName, m_iYear, m_iMon, m_iDay, m_Pid);
-        m_pFp = fopen(logPath, "w");
-        if (m_pFp)
-            m_iLogCnt = 1;
-    }
-    else if (ftell(m_pFp) >= ONELOGFILELIMIT) {
-        // 单个日志文件太大
-        fclose(m_pFp);
-        char old_path[1024] = {};
-        char new_path[1024] = {};
-        // 给文件重命名
-        for (int i = m_iLogCnt - 1; i > 0; --i) {
-            sprintf(old_path, "%s/%s.%d%02d%02d.%u.log.%d", m_aLogDir, m_aProgName, _year, _mon, _day, m_Pid, i);
-            sprintf(new_path, "%s/%s.%d%02d%02d.%u.log.%d", m_aLogDir, m_aProgName, _year, _mon, _day, m_Pid, i + 1);
-            rename(old_path, new_path);
-        }
-        sprintf(old_path, "%s/%s.%d%02d%02d.%u.log", m_aLogDir, m_aProgName, _year, _mon, _day, m_Pid);
-        sprintf(new_path, "%s/%s.%d%02d%02d.%u.log.1", m_aLogDir, m_aProgName, _year, _mon, _day, m_Pid);
-        rename(old_path, new_path);
-        m_pFp = fopen(old_path, "w");
-        if (m_pFp)
-            m_iLogCnt ++;
-    }
-    return m_pFp != nullptr;
+	// 首先检查环境是否ok
+	if (!m_bEnv) {
+		if (m_pFp) 
+			fclose(m_pFp);
+		// 重定向
+		m_pFp = fopen("/null", "w");
+		return m_pFp != nullptr;
+	}
+	// 如果还没有打开文件
+	if (!m_pFp) {
+		m_iYear = _year;
+		m_iDay = _day;
+		m_iMon = _mon;
+		char logPath[1024] = {};
+		sprintf(logPath, "%s/%s.%d%02d%02d.%u.log", m_aLogDir, m_aProgName, m_iYear, m_iMon, m_iDay, m_Pid);
+		m_pFp = fopen(logPath, "w");
+		if (m_pFp)
+			m_iLogCnt++;
+	}
+	else if (m_iDay != _day) {
+		// 天数更新，新建日志文件
+		fclose(m_pFp);
+		m_iDay = _day;
+		char logPath[1024] = {};
+		sprintf(logPath, "%s/%s.%d%02d%02d.%u.log", m_aLogDir, m_aProgName, m_iYear, m_iMon, m_iDay, m_Pid);
+		m_pFp = fopen(logPath, "w");
+		if (m_pFp)
+			m_iLogCnt = 1;
+	}
+	else if (ftell(m_pFp) >= ONELOGFILELIMIT) {
+		// 单个日志文件太大
+		fclose(m_pFp);
+		char old_path[1024] = {};
+		char new_path[1024] = {};
+		// 给文件重命名
+		for (int i = m_iLogCnt - 1; i > 0; --i) {
+			sprintf(old_path, "%s/%s.%d%02d%02d.%u.log.%d", m_aLogDir, m_aProgName, _year, _mon, _day, m_Pid, i);
+			sprintf(new_path, "%s/%s.%d%02d%02d.%u.log.%d", m_aLogDir, m_aProgName, _year, _mon, _day, m_Pid, i + 1);
+			rename(old_path, new_path);
+		}
+		sprintf(old_path, "%s/%s.%d%02d%02d.%u.log", m_aLogDir, m_aProgName, _year, _mon, _day, m_Pid);
+		sprintf(new_path, "%s/%s.%d%02d%02d.%u.log.1", m_aLogDir, m_aProgName, _year, _mon, _day, m_Pid);
+		rename(old_path, new_path);
+		m_pFp = fopen(old_path, "w");
+		if (m_pFp)
+			m_iLogCnt ++;
+	}
+	return m_pFp != nullptr;
 }
 
 // 追加日志
@@ -336,7 +336,7 @@ void CRingLog::PersistLog() {
 
 
 void* ConFunc(void* arg) {
-    CRingLog::GetInstance()->PersistLog();
-    return nullptr;
+	CRingLog::GetInstance()->PersistLog();
+	return nullptr;
 }
 

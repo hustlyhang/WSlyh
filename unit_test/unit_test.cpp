@@ -3,8 +3,8 @@
 #include "../log/log.h"
 #include "../http/http.h"
 
-void cb_f(client_data* _client_data){
-    printf("timer sock_fd is: %d, delay time is: %ld\n", _client_data->sock_fd, _client_data->timer->expire_time);
+void cb_f(SClientData* _client_data){
+    printf("timer sock_fd is: %d, delay time is: %ld\n", _client_data->sock_fd, _client_data->timer->m_iExpireTime);
     return;
 }
 
@@ -21,7 +21,7 @@ public:
 public:
     const char m_aLogDir[1024] = {"./ServerLog"};  //日志记录文件夹
 private:
-    TimerHeap* m_timer_heap = nullptr;
+    CTimerHeap* m_timer_heap = nullptr;
     int* delay_time = nullptr;
     int test_size;
 };
@@ -41,14 +41,14 @@ CUnitTest::~CUnitTest() {
 void CUnitTest::init() {
     std::cout<<"please enter test size :"<<std::endl;
     std::cin>>test_size;
-    m_timer_heap = new TimerHeap(test_size);
+    m_timer_heap = new CTimerHeap(test_size);
     delay_time = new int[test_size]();
     for (int i = 0; i < test_size; ++i) {
         std::cin>>delay_time[i];
     }
 }
 int CUnitTest::gettop() {
-    return m_timer_heap->getTop()->m_client_data->sock_fd;
+    return m_timer_heap->GetTop()->m_sClientData->sock_fd;
 }
 void CUnitTest::test_timer() {
     init();
@@ -57,21 +57,21 @@ void CUnitTest::test_timer() {
     printf("in test\n");
     for (int i = 0; i < test_size; ++i) {
         printf("now is add %d\n", i);
-        client_data* tmp_data = new client_data();
-        HeapTimer* tmp_timer = new HeapTimer(delay_time[i]);
+        SClientData* tmp_data = new SClientData();
+        CHeapTimer* tmp_timer = new CHeapTimer(delay_time[i]);
 
         tmp_timer->callback_func = cb_f;
-        tmp_timer->m_client_data = tmp_data;
+        tmp_timer->m_sClientData = tmp_data;
         
         tmp_data->address = addr_tmp;
         tmp_data->sock_fd = i;
         tmp_data->timer = tmp_timer;
         
-        m_timer_heap->add_timer(tmp_timer);
+        m_timer_heap->AddTimer(tmp_timer);
     }
-    while (m_timer_heap->getTop()) {
+    while (m_timer_heap->GetTop()) {
         printf("test loop!!!!!!\n");
-        m_timer_heap->tick();
+        m_timer_heap->Tick();
         sleep(1);
     }
     printf("test over!!!!!!\n");

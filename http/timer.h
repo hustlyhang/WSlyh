@@ -1,6 +1,6 @@
 #ifndef TIMER_H
 #define TIMER_H
-// #include "http.h"
+#include "http.h"
 #include <vector>
 #include <sys/time.h>
 #include <netinet/in.h>
@@ -9,52 +9,45 @@
 #include <iostream>
 #include <vector>
 
-class HeapTimer;
+class CHeapTimer;
 
-struct client_data {
+struct SClientData {
     sockaddr_in address;        // 连接的地址
     int sock_fd;                // http连接的文件描述符
-    HeapTimer* timer;           // 小根堆时间节点
+    CHeapTimer* timer;           // 小根堆时间节点
 };
 
-class HeapTimer {
+class CHeapTimer {
 public:
-    HeapTimer(int delaytime);
+    CHeapTimer(int _delaytime);
     // 需要一个回调函数
-    void (*callback_func)(client_data*);
+    void (*callback_func)(SClientData*);
 public:
-    time_t expire_time;   // 定时器过期时间
-    client_data* m_client_data;
+    time_t m_iExpireTime;   // 定时器过期时间
+    SClientData* m_sClientData;
 };
 
 
 // 定时器小根堆
-class TimerHeap{
+class CTimerHeap{
 public:
-    TimerHeap(int _capacity);
-    ~TimerHeap();
+    CTimerHeap(int _capacity);
+    ~CTimerHeap();
 
 public:
-    void heap_down(int heap_node);// 向下调整
-    void add_timer(HeapTimer*);
-    void del_timer(HeapTimer*);
-    void pop_timer();
-    void tick();
+    void HeapDown(int heap_node);// 向下调整
+    void AddTimer(CHeapTimer*);
+    void DelTimer(CHeapTimer*);
+    void PopTimer();
+    void Tick();
 
-    void resize(); // 当数组容纳不下的时候扩容
+    void Resize(); // 当数组容纳不下的时候扩容
 
-    HeapTimer* getTop();
+    CHeapTimer* GetTop();
 
 private:
-    int m_capacity;
-    int m_cur_num;
-    HeapTimer** m_timer_array;
+    int m_iCapacity;
+    int m_iCurNum;
+    CHeapTimer** m_aTimers;
 };
-
-
-
-
-
-
-
 #endif

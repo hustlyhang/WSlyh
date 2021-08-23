@@ -1,4 +1,4 @@
-#http
+# http
 
 - 每个连接都会绑定一个http对象，同时每个http对象都要绑定一个timer，以便于剔除长时间不活跃的连接  
     - 处理http请求准备调用http-parse      github地址https://github.com/nodejs/http-parser  

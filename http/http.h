@@ -118,6 +118,9 @@ public:
     bool AddBlankLine();                                // 添加空行
     bool AddContent(const char* _content);              // 添加内容
     void unmmap();                                      // 因为使用了文件映射，当传送完后需要解除映射
+    sockaddr_in *GetAddress() {
+        return &m_sAddr;
+    }
 #ifdef DEBUG_T
     void Test(const char* _str, int _len) {
         m_sHttpParse.ParseInternal(_str, _len);
@@ -147,7 +150,8 @@ private:
 	char m_aReadData[MAX_READ_DATA_BUFF_SIZE];	    // 读的数据
     char m_aWriteData[MAX_WRITE_DATA_BUFF_SIZE];    // 写数据
     char *m_pFileAddr;          // 文件映射时的起始地址
-    int m_iDateLen;             // 所有待发送数据的长度
+    int m_iDataLen;             // 所有待发送数据的长度
+    int m_iDataSendLen;         // 已发送数据的长度
     int m_iTriggerMode;         // 触发模式 0 LT 1 ET
     int m_iReadIdx;             // 读缓冲区中当前读取内容位置
     int m_iWriteIdx;            // 写缓冲区中当前位置

@@ -135,7 +135,7 @@ void CUnitTest::test_log() {
 }
 
 
-#ifdef DEBUG
+#if 0
 
 
 int main() {

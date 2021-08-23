@@ -22,7 +22,6 @@ public:
     CHeapTimer(int _delaytime);
     // 需要一个回调函数
     void (*callback_func)(SClientData*);
-public:
     time_t m_iExpireTime;   // 定时器过期时间
     SClientData* m_sClientData;
 };

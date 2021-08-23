@@ -464,6 +464,8 @@ void CHttp::unmmap() {
     }
 }
 
+// 暴露给eventloop的读数据接口，读取sockfd上的数据，会根据et和lt分别处理
+// 当监听到sockfd上有可读事件时，就调用此接口，读取数据
 bool CHttp::Read() {
     // 检查缓冲区是否溢出
     if (m_iReadIdx >= MAX_READ_DATA_BUFF_SIZE) {
@@ -499,17 +501,81 @@ bool CHttp::Read() {
     }
 }
 
+// eventloop接口，当sockfd触发epollout事件时，用此接口向sockfd上写入数据
 bool CHttp::Write() {
+    int temp = 0;
 
+    if (m_iDataLen == 0) {
+        ModFd(m_iEpollFd, m_iSockFd, EPOLLIN, m_iTriggerMode);
+        // 初始化
+        m_iReadIdx = 0;
+        m_iWriteIdx = 0;
+        m_iDataLen = 0;
+        m_iDataSendLen = 0;
+        memset(m_aReadData, '\0', MAX_READ_DATA_BUFF_SIZE);
+        memset(m_aWriteData, '\0', MAX_WRITE_DATA_BUFF_SIZE);
+        m_sHttpParse.Init();
+        return true;
+    }
+
+    while (1) {
+        temp = writev(m_iSockFd, m_sIv, m_iIvCount);
+        LOG_INFO("write : %d, m_sIv[0].iov_len : %d, m_sIv[1].iov_len : %d, m_iDataLen : %d, m_iWriteIdx : %d", temp, m_sIv[0].iov_len, m_sIv[1].iov_len, m_iDataLen, m_iWriteIdx);
+        if (temp < 0) {
+            if (errno == EAGAIN) {
+                ModFd(m_iEpollFd, m_iSockFd, EPOLLOUT, m_iTriggerMode);
+                return true;
+            }
+            unmmap();
+            return false;
+        }
+
+        m_iDataSendLen += temp;
+        m_iDataLen -= temp;
+        if (m_iDataLen <= 0) {
+            unmmap();
+            ModFd(m_iEpollFd, m_iSockFd, EPOLLIN, m_iTriggerMode);
+            if (m_bLinger) {
+                LOG_INFO("once success and Linger");
+                m_iReadIdx = 0;
+                m_iWriteIdx = 0;
+                m_iDataLen = 0;
+                m_iDataSendLen = 0;
+                memset(m_aReadData, '\0', MAX_READ_DATA_BUFF_SIZE);
+                memset(m_aWriteData, '\0', MAX_WRITE_DATA_BUFF_SIZE);
+                m_sHttpParse.Init();
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
+        else {
+            if (m_iDataSendLen >= m_sIv[0].iov_len) {
+                m_sIv[0].iov_len = 0;
+                m_sIv[1].iov_base = m_pFileAddr + (m_iDataSendLen - m_iWriteIdx);
+                m_sIv[1].iov_len = m_iDataLen;
+            }
+            else {
+                m_sIv[0].iov_base = m_aWriteData + m_iDataSendLen;
+                m_sIv[0].iov_len = m_sIv[0].iov_len - m_iDataSendLen;
+            }
+        }
+        
+    }
 }
 
 HttpRequestDecodeState CHttp::ParseRead() {
     // 处理读取到缓冲区的数据，如果不完整，返回false，并且继续监听可读事件
     m_sHttpParse.ParseInternal(m_aReadData, m_iReadIdx);
     HttpRequestDecodeState status = m_sHttpParse.GetStatus();
-    LOG_INFO("处理http请求错误，当前处理机状态%d, 当前内容%s", (int)status, m_aReadData);
+    LOG_INFO("deal http request wrong, now State machine is: %d, current content is :%s", (int)status, m_aReadData);
     if (m_sHttpParse.GetLen() == m_iReadIdx) {
         // 说明读到了末尾
+        if (status == HttpRequestDecodeState::BODY && m_sHttpParse.GetMethod() == "GET") {
+            // 说明是Get方法，只要是Body就是成功
+            return HttpRequestDecodeState::COMPLETE;
+        }
         if (status != HttpRequestDecodeState::INVALID_VERSION &&
             status != HttpRequestDecodeState::INVALID &&
             status != HttpRequestDecodeState::INVALID_HEADER &&
@@ -546,7 +612,7 @@ bool CHttp::AddStatusLine(int _status, const char* _title) {
 }
 bool CHttp::AddHeaders(int _contentlen) {
     return AddContentLength(_contentlen) && AddLinger() &&
-        AddBlankLine()&& AddContentType();
+        AddContentType() && AddBlankLine();
 }
 bool CHttp::AddContentLength(int _contentlen) {
     return AddLine("Content-Length:%d\r\n", _contentlen);
@@ -609,7 +675,7 @@ bool CHttp::ParseWrite(HttpRequestDecodeState _status) {
         m_sIv[1].iov_base = m_pFileAddr;
         m_sIv[1].iov_len = m_sFileStat.st_size;
         m_iIvCount = 2;
-        m_iDateLen = m_iWriteIdx + m_sFileStat.st_size;
+        m_iDataLen = m_iWriteIdx + m_sFileStat.st_size;
         return true;
     }
     else {
@@ -619,8 +685,10 @@ bool CHttp::ParseWrite(HttpRequestDecodeState _status) {
     }
 }
 
+// 提供给线程池的接口
 void CHttp::HttpParse() {
     HttpRequestDecodeState status = ParseRead();
+    LOG_INFO("HttpParse ret is : %d", (int)status);
     if (status == HttpRequestDecodeState::OPEN) {
         // 当还没有接收完数据时，需要重新监听
         ModFd(m_iEpollFd, m_iSockFd, EPOLLIN, m_iTriggerMode);

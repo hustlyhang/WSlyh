@@ -71,17 +71,15 @@ void CTimerHeap::PopTimer() {
 void CTimerHeap::Tick() {
     CHeapTimer* tmp_timer = m_aTimers[0];
     time_t cur_time = time(NULL);
-    printf("now time is %ld\n", cur_time);
+    LOG_INFO("timer tick %d", cur_time);
     while(m_iCurNum) {
-        printf("loop\n");
         if(!tmp_timer) break;
-        printf("timer time is %ld\n", tmp_timer->m_iExpireTime);
         if(tmp_timer->m_iExpireTime > cur_time) break;
         if(m_aTimers[0]->callback_func) {
-            printf("call_back\n");
             m_aTimers[0]->callback_func(m_aTimers[0]->m_sClientData);
         }
         PopTimer();
+        LOG_INFO("pop timer");
         tmp_timer = m_aTimers[0];
     }
 }

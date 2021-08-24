@@ -2,7 +2,8 @@
 #include <string.h>
 
 CHeapTimer::CHeapTimer(int _delaytime) {
-    this->m_iExpireTime = time(NULL) + _delaytime;
+    m_iExpireTime = time(NULL) + _delaytime;
+    m_iPos = 0;
 }
 
 
@@ -16,20 +17,21 @@ CTimerHeap::~CTimerHeap() {
     for (int i = 0; i < m_iCurNum; ++i) m_aTimers[i] = nullptr;
 }
 
-
+// 小根堆
 void CTimerHeap::HeapDown(int heap_node) {
     CHeapTimer* tmp_timer = m_aTimers[heap_node];
-
     int child = 0;
     for (; heap_node * 2 + 1 < m_iCurNum; heap_node = child) {
         child = heap_node * 2 + 1;
         if (child + 1 < m_iCurNum && m_aTimers[child + 1]->m_iExpireTime < m_aTimers[child]->m_iExpireTime) child++;
         if (tmp_timer->m_iExpireTime > m_aTimers[child]->m_iExpireTime) {
             m_aTimers[heap_node] = m_aTimers[child];
+            m_aTimers[heap_node]->m_iPos = heap_node;
         }
         else break;
     }
     m_aTimers[heap_node] = tmp_timer;
+    m_aTimers[heap_node]->m_iPos = heap_node;
 }
 
 void CTimerHeap::AddTimer(CHeapTimer* add_timer) {
@@ -44,13 +46,24 @@ void CTimerHeap::AddTimer(CHeapTimer* add_timer) {
         parent = ( last_node - 1 ) / 2;
         if( m_aTimers[parent]->m_iExpireTime > add_timer->m_iExpireTime ) {
             m_aTimers[last_node] = m_aTimers[parent];
+            m_aTimers[last_node]->m_iPos = last_node;
         } 
         else {
             break;
         }
     }
     m_aTimers[last_node] = add_timer;
+    m_aTimers[last_node]->m_iPos = last_node;
+    LOG_INFO("add timer");
+    for (int i = 0; i < m_iCurNum; ++i) {
+        LOG_INFO("%d, %d", m_aTimers[i]->m_iExpireTime, m_aTimers[i]->m_iPos);
+    }
+    
 }
+void CTimerHeap::Adjust(CHeapTimer* _tnode) {
+    HeapDown(_tnode->m_iPos);
+}
+
 
 void CTimerHeap::DelTimer( CHeapTimer* del_timer ) {
     if( !del_timer ) return;
@@ -62,8 +75,7 @@ void CTimerHeap::PopTimer() {
     if(!m_iCurNum) return;
     if(m_aTimers[0]) {
         m_aTimers[0] = m_aTimers[--m_iCurNum];
-        delete m_aTimers[m_iCurNum];
-        m_aTimers[m_iCurNum] = nullptr;
+        // m_aTimers[m_iCurNum] = nullptr;
         HeapDown(0);  // 对新的根节点进行下滤
     }
 }

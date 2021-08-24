@@ -24,12 +24,14 @@ public:
     void (*callback_func)(SClientData*);
     time_t m_iExpireTime;   // 定时器过期时间
     SClientData* m_sClientData;
+    int m_iPos;                // 位于数组堆中的下标
 };
 
 
 // 定时器小根堆
 class CTimerHeap{
 public:
+    CTimerHeap() {m_iCapacity = 10;}
     CTimerHeap(int _capacity);
     ~CTimerHeap();
 
@@ -39,7 +41,7 @@ public:
     void DelTimer(CHeapTimer*);
     void PopTimer();
     void Tick();
-
+    void Adjust(CHeapTimer*);      // 向下调整
     void Resize(); // 当数组容纳不下的时候扩容
 
     CHeapTimer* GetTop();
@@ -49,4 +51,6 @@ private:
     int m_iCurNum;
     CHeapTimer** m_aTimers;
 };
+
+
 #endif

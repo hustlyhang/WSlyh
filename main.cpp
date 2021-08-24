@@ -18,7 +18,7 @@
 
 #define MAX_FD 65536                // 最大文件描述符
 #define MAX_EVENT_NUMBER 10000      //最大事件数
-#define TIMESLOT 15                  //最小超时单位
+#define TIMESLOT 5                  //最小超时单位
 
 #define listenfdLT
 
@@ -62,6 +62,7 @@ void CallBackFunc(SClientData *_userData) {
     LOG_INFO("CallBackFunc");
     epoll_ctl(epollFd, EPOLL_CTL_DEL, _userData->sock_fd, 0);
     assert(_userData);
+    // 只要关闭相关的文件描述符，chttp类可以复用
     close(_userData->sock_fd);
     CHttp::m_iHttpCnt--;
     LOG_INFO("close fd %d", _userData->sock_fd);
@@ -85,9 +86,9 @@ int main(int argc, char* argv[]) {
     AddSig(SIGPIPE, SIG_IGN);
 
     // 创建线程池
-    threadpool<CHttp>* pool = nullptr;
+    CThreadPool<CHttp>* pool = nullptr;
     try {
-        pool = new threadpool<CHttp>(4);
+        pool = new CThreadPool<CHttp>(4);
     }
     catch(...) {
         LOG_ERROR("construct threadpool failed!");
@@ -122,14 +123,14 @@ int main(int argc, char* argv[]) {
     assert(epollFd != -1);
 
     // et，oneshot
-    AddFd(epollFd, listenFd, true, 1);
+    AddFd(epollFd, listenFd, false, 0);
     CHttp::m_iEpollFd = epollFd;
 
     // 创建管道
     ret = socketpair(PF_UNIX, SOCK_STREAM, 0, pipeFd);
     assert(ret != -1);
     SetNonBlocking(pipeFd[1]);
-    AddFd(epollFd, pipeFd[0], true, 0);
+    AddFd(epollFd, pipeFd[0], false, 0);
 
     AddSig(SIGALRM, SigHandler, false);
     AddSig(SIGTERM, SigHandler, false);
@@ -162,6 +163,7 @@ int main(int argc, char* argv[]) {
 #ifdef listenfdLT
                 LOG_INFO("listenFd in Lt model");
                 int connfd = accept(listenFd, (struct sockaddr *)&client_address, &client_addrlength);
+                LOG_INFO("Add sockfd : %d", connfd);
                 if (connfd < 0) {
                     LOG_ERROR("%s:errno is:%d", "accept error", errno);
                     continue;
@@ -171,12 +173,12 @@ int main(int argc, char* argv[]) {
                     LOG_ERROR("Internal server busy");
                     continue;
                 }
+                // 复用
                 https[connfd].Init(connfd, client_address, 0);
                 clientDatas[connfd].address = client_address;
                 clientDatas[connfd].sock_fd = connfd;
 
-                time_t cur = time(NULL);
-                CHeapTimer* tempTimer = new CHeapTimer(cur + 3 * TIMESLOT);
+                CHeapTimer* tempTimer = new CHeapTimer(3 * TIMESLOT);
                 tempTimer->m_sClientData = &clientDatas[connfd];
                 tempTimer->callback_func = CallBackFunc;
                 clientDatas[connfd].timer = tempTimer;
@@ -233,6 +235,7 @@ int main(int argc, char* argv[]) {
                         switch (signals[i]) {
                         case SIGALRM:
                         {
+                            // AddFd(epollFd, pipeFd[0], true, 0);
                             timeout = true;
                             break;
                         }
@@ -251,18 +254,19 @@ int main(int argc, char* argv[]) {
                 CHeapTimer* tempTimer = clientDatas[sockfd].timer;
                 if (https[sockfd].Read()) {
                     LOG_INFO("Read client addr : %s", inet_ntoa(https[sockfd].GetAddress()->sin_addr));
-                    pool->append(https + sockfd);
+                    pool->Append(https + sockfd);
                     if (tempTimer) {
                         LOG_INFO("adjust timer once");
-                        cTimerHeap.DelTimer(tempTimer);
                         time_t cur = time(NULL);
                         tempTimer->m_iExpireTime = cur + 3 * TIMESLOT;
-                        cTimerHeap.AddTimer(tempTimer);
+                        cTimerHeap.Adjust(tempTimer);
                     }
                 }
                 else {
-                    tempTimer->callback_func(&clientDatas[sockfd]);
-                    if (tempTimer) cTimerHeap.DelTimer(tempTimer);
+                    if (tempTimer->callback_func) {
+                        tempTimer->callback_func(&clientDatas[sockfd]);
+                        if (tempTimer) cTimerHeap.DelTimer(tempTimer);
+                    }
                 }
             }
             else if (events[i].events & EPOLLOUT) {
@@ -274,21 +278,16 @@ int main(int argc, char* argv[]) {
 
                     if (tempTimer) {
                         LOG_INFO("adjust timer once");
-                        cTimerHeap.DelTimer(tempTimer);
                         time_t cur = time(NULL);
                         tempTimer->m_iExpireTime = cur + 3 * TIMESLOT;
-                        cTimerHeap.AddTimer(tempTimer);
+                        cTimerHeap.Adjust(tempTimer);
                     }
                 }
                 else {
-                    LOG_INFO("Write client addr : %s, failed", inet_ntoa(https[sockfd].GetAddress()->sin_addr));
                     if (tempTimer && &clientDatas[sockfd]) {
                         tempTimer->callback_func(&clientDatas[sockfd]);
                     }
-                    
-                    LOG_INFO("Write client addr : %s, failed 1", inet_ntoa(https[sockfd].GetAddress()->sin_addr));
                     if (tempTimer) cTimerHeap.DelTimer(tempTimer);
-                    LOG_INFO("Write client addr : %s, failed 2", inet_ntoa(https[sockfd].GetAddress()->sin_addr));
                 }
             }
         }

@@ -405,6 +405,7 @@ void AddFd(int _epollFd, int _fd, bool _oneShot, int _triggerMode) {
     epoll_ctl(_epollFd, EPOLL_CTL_ADD, _fd, &event);
     
     SetNonBlocking(_fd);
+    LOG_INFO("Add fd : %d", _fd);
 }
 
 void RemoveFd(int _epollFd, int _fd) {
@@ -421,8 +422,8 @@ void ModFd(int _epollFd, int _fd, int _event, int _triggerMode) {
         event.events = _event | EPOLLET | EPOLLONESHOT | EPOLLRDHUP;
     else
         event.events = _event | EPOLLONESHOT | EPOLLRDHUP;
-
     epoll_ctl(_epollFd, EPOLL_CTL_MOD, _fd, &event);
+    LOG_INFO("ModFd fd : %d", _fd);
 }
 
 
@@ -442,9 +443,12 @@ void CHttp::Init(int _sockfd, const sockaddr_in& _addr, int _triggerMode) {
     m_iReadIdx = 0;
     m_iWriteIdx = 0;
 
+    m_iDataLen = 0;
+    m_iDataSendLen = 0;
+
     memset(m_aReadData, '\0', MAX_READ_DATA_BUFF_SIZE);
     memset(m_aWriteData, '\0', MAX_WRITE_DATA_BUFF_SIZE);
-
+    m_bLinger = true;
     m_sHttpParse.Init();
 }
 
@@ -517,7 +521,6 @@ bool CHttp::Write() {
         m_sHttpParse.Init();
         return true;
     }
-
     while (1) {
         temp = writev(m_iSockFd, m_sIv, m_iIvCount);
         LOG_INFO("write : %d, m_sIv[0].iov_len : %d, m_sIv[1].iov_len : %d, m_iDataLen : %d, m_iWriteIdx : %d", temp, m_sIv[0].iov_len, m_sIv[1].iov_len, m_iDataLen, m_iWriteIdx);
@@ -529,7 +532,6 @@ bool CHttp::Write() {
             unmmap();
             return false;
         }
-
         m_iDataSendLen += temp;
         m_iDataLen -= temp;
         if (m_iDataLen <= 0) {
@@ -589,7 +591,6 @@ HttpRequestDecodeState CHttp::ParseRead() {
 
 bool CHttp::AddLine(const char* _format, ...) {
     if (m_iWriteIdx >= MAX_WRITE_DATA_BUFF_SIZE) {
-        
         return false;
     }
     va_list arglist;

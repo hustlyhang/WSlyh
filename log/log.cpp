@@ -12,8 +12,8 @@
 #define LOGFILEMEMLIMIT (3u * 1024 * 1024 * 1024)
 #define ONELOGLEN (4 * 1024) //4K
 #define RELOGTHRESOLD 5
-#define LOGWAITTIME 1       // µ±³Ö¾Ã»¯Ê§°ÜÊ±µÈ´ıĞÅºÅµÄÊ±¼ä
-#define SHMKEY 500234       // ¹²ÏíÄÚ´ækey
+#define LOGWAITTIME 1       // å½“æŒä¹…åŒ–å¤±è´¥æ—¶ç­‰å¾…ä¿¡å·çš„æ—¶é—´
+#define SHMKEY 500234       // å…±äº«å†…å­˜key
 
 const char* curexelink = "/proc/self/exe";
 
@@ -21,9 +21,9 @@ pid_t GetPid() {
 	return syscall(__NR_gettid);
 }
 
-// ÔÚ¹²ÏíÄÚ´æÖĞ´´½¨CellBuffer
+// åœ¨å…±äº«å†…å­˜ä¸­åˆ›å»ºCellBuffer
 CBufferCell* CreateCellBuffer(key_t _shmKey, uint32_t _dataLen) {
-    // ´´½¨¹²ÏíÄÚ´æ¶Î
+    // åˆ›å»ºå…±äº«å†…å­˜æ®µ
     int shmId = shmget(_shmKey, sizeof(CBufferCell) + _dataLen, IPC_CREAT | IPC_EXCL | 0666);
     if (shmId == -1 && errno == EEXIST)
         shmId = shmget(_shmKey, sizeof(CBufferCell) + _dataLen, 0666);
@@ -38,10 +38,10 @@ CBufferCell* CreateCellBuffer(key_t _shmKey, uint32_t _dataLen) {
 }
 
 /*
-    ÇåÀíÖ®Ç°°ó¶¨µÄ¹²ÏíÄÚ´æ£¬Í¬Ê±·µ»Øshmid
-    ¸ù¾İµ±Ç°ÔËĞĞµÄ³ÌĞòÒÔ¼°×Ô¼ºÉè¶¨µÄÒ»¸öÖµÀ´Éú³ÉÎ¨Ò»shmkey
-    Õâ¸öÎ¨Ò»µÄshmkey¿ÉÒÔ»ñÈ¡µ½Ò»¿é¹²ÏíÄÚ´æ£¬ÄÚ´æÀïÃæÌîµÄ»ñÈ¡cellbufferµÄshmid
-    »ñÈ¡µ½Õâ¸öidºó¾Í¿ÉÒÔ±éÀúÕû¸ö»·×´ÈÕÖ¾
+    æ¸…ç†ä¹‹å‰ç»‘å®šçš„å…±äº«å†…å­˜ï¼ŒåŒæ—¶è¿”å›shmid
+    æ ¹æ®å½“å‰è¿è¡Œçš„ç¨‹åºä»¥åŠè‡ªå·±è®¾å®šçš„ä¸€ä¸ªå€¼æ¥ç”Ÿæˆå”¯ä¸€shmkey
+    è¿™ä¸ªå”¯ä¸€çš„shmkeyå¯ä»¥è·å–åˆ°ä¸€å—å…±äº«å†…å­˜ï¼Œå†…å­˜é‡Œé¢å¡«çš„è·å–cellbufferçš„shmid
+    è·å–åˆ°è¿™ä¸ªidåå°±å¯ä»¥éå†æ•´ä¸ªç¯çŠ¶æ—¥å¿—
 */ 
 int GetPrstCBShmId() {
     char exePatch[4069] = {};
@@ -51,7 +51,7 @@ int GetPrstCBShmId() {
     int shmId = shmget(shmKey, sizeof(int*), IPC_CREAT | IPC_EXCL | 0666);
     if (shmId == -1 && errno == EEXIST) {
         shmId = shmget(shmKey, sizeof(int*), 0666);
-        // °ÑÖ®Ç°°ó¶¨µÄ¹²ÏíÄÚ´æ½â°ó
+        // æŠŠä¹‹å‰ç»‘å®šçš„å…±äº«å†…å­˜è§£ç»‘
         int* CBShmId = (int*)shmat(shmId, 0, 0);
         int headCBShmId = *CBShmId;
         int curCBShmId = headCBShmId;
@@ -73,19 +73,19 @@ int GetPrstCBShmId() {
     return shmId;
 }
 
-// ¾²Ì¬±äÁ¿³õÊ¼»¯
+// é™æ€å˜é‡åˆå§‹åŒ–
 CLocker CRingLog::m_cLocker;
 CCond CRingLog::m_cCond;
-uint32_t CRingLog::m_uOneBuffLen = 30 * 1024 * 1024;//30MB µ¥¸öÈÕÖ¾µ¥Ôª´óĞ¡
+uint32_t CRingLog::m_uOneBuffLen = 30 * 1024 * 1024;//30MB å•ä¸ªæ—¥å¿—å•å…ƒå¤§å°
 
 
 CRingLog::CRingLog() :m_iBuffCnt(3), m_pCurBuf(nullptr), m_pPrstBuf(nullptr), m_pFp(nullptr), 
 						m_iLogCnt(0), m_bEnv(false), m_eLevel((LOG_LEVEL)0), m_uLastLogFailTime(0), m_sTM(), m_pPrstBCShmId(nullptr){
-	// ´´½¨Ë«Á´±í
-    // ±£´æCB»·µÄ¹²ÏíÄÚ´æµØÖ·
+	// åˆ›å»ºåŒé“¾è¡¨
+    // ä¿å­˜CBç¯çš„å…±äº«å†…å­˜åœ°å€
     int shmId = GetPrstCBShmId();
     if (shmId == -1) exit(1);
-    // ÄÃµ½Ö¸Ïò¹²ÏíÄÚ´æµÄÖ¸Õë
+    // æ‹¿åˆ°æŒ‡å‘å…±äº«å†…å­˜çš„æŒ‡é’ˆ
     m_pPrstBCShmId = (int*)shmat(shmId, 0, 0);
     CBufferCell* head = CreateCellBuffer(SHMKEY, m_uOneBuffLen);
     if (!head)
@@ -115,17 +115,17 @@ CRingLog::CRingLog() :m_iBuffCnt(3), m_pCurBuf(nullptr), m_pPrstBuf(nullptr), m_
     head->m_pPre = prev;
     head->m_iPreShmId = prev->m_iShmId;
 
-    // ½«µ±Ç°Ö¸ÕëºÍ³Ö¾Ã»¯Ö¸Õë¶¼Ö¸ÏòË«Ñ­»·Á´±íµÄÍ·½Úµã
+    // å°†å½“å‰æŒ‡é’ˆå’ŒæŒä¹…åŒ–æŒ‡é’ˆéƒ½æŒ‡å‘åŒå¾ªç¯é“¾è¡¨çš„å¤´èŠ‚ç‚¹
     m_pCurBuf = head;
     m_pPrstBuf = head;
 
-    // ¸üĞÂ
+    // æ›´æ–°
     *m_pPrstBCShmId = m_pPrstBuf->m_iShmId;
 
     m_Pid = GetPid();
 }
 
-// ³õÊ¼»¯ÈÕÖ¾Â·¾¶
+// åˆå§‹åŒ–æ—¥å¿—è·¯å¾„
 void CRingLog::InitLogPath(const char* _logdir, const char* _prog_name, int _level) {
 	strncpy(m_aLogDir, _logdir, MAX_LOG_DIR_LEN);
 	strncpy(m_aProgName, _prog_name, MAX_PROG_NAME_LEN);
@@ -143,17 +143,17 @@ void CRingLog::InitLogPath(const char* _logdir, const char* _prog_name, int _lev
 	m_eLevel = (LOG_LEVEL)_level;
 }
 
-// ´¦Àí´ò¿ªµÄÈÕÖ¾ÎÄ¼ş
+// å¤„ç†æ‰“å¼€çš„æ—¥å¿—æ–‡ä»¶
 bool CRingLog::DecisFile(int _year, int _mon, int _day) {
-	// Ê×ÏÈ¼ì²é»·¾³ÊÇ·ñok
+	// é¦–å…ˆæ£€æŸ¥ç¯å¢ƒæ˜¯å¦ok
 	if (!m_bEnv) {
 		if (m_pFp) 
 			fclose(m_pFp);
-		// ÖØ¶¨Ïò
+		// é‡å®šå‘
 		m_pFp = fopen("/null", "w");
 		return m_pFp != nullptr;
 	}
-	// Èç¹û»¹Ã»ÓĞ´ò¿ªÎÄ¼ş
+	// å¦‚æœè¿˜æ²¡æœ‰æ‰“å¼€æ–‡ä»¶
 	if (!m_pFp) {
 		m_iYear = _year;
 		m_iDay = _day;
@@ -165,7 +165,7 @@ bool CRingLog::DecisFile(int _year, int _mon, int _day) {
 			m_iLogCnt++;
 	}
 	else if (m_iDay != _day) {
-		// ÌìÊı¸üĞÂ£¬ĞÂ½¨ÈÕÖ¾ÎÄ¼ş
+		// å¤©æ•°æ›´æ–°ï¼Œæ–°å»ºæ—¥å¿—æ–‡ä»¶
 		fclose(m_pFp);
 		m_iDay = _day;
 		char logPath[1024] = {};
@@ -175,11 +175,11 @@ bool CRingLog::DecisFile(int _year, int _mon, int _day) {
 			m_iLogCnt = 1;
 	}
 	else if (ftell(m_pFp) >= ONELOGFILELIMIT) {
-		// µ¥¸öÈÕÖ¾ÎÄ¼şÌ«´ó
+		// å•ä¸ªæ—¥å¿—æ–‡ä»¶å¤ªå¤§
 		fclose(m_pFp);
 		char old_path[1024] = {};
 		char new_path[1024] = {};
-		// ¸øÎÄ¼şÖØÃüÃû
+		// ç»™æ–‡ä»¶é‡å‘½å
 		for (int i = m_iLogCnt - 1; i > 0; --i) {
 			sprintf(old_path, "%s/%s.%d%02d%02d.%u.log.%d", m_aLogDir, m_aProgName, _year, _mon, _day, m_Pid, i);
 			sprintf(new_path, "%s/%s.%d%02d%02d.%u.log.%d", m_aLogDir, m_aProgName, _year, _mon, _day, m_Pid, i + 1);
@@ -195,16 +195,16 @@ bool CRingLog::DecisFile(int _year, int _mon, int _day) {
 	return m_pFp != nullptr;
 }
 
-// ×·¼ÓÈÕÖ¾
+// è¿½åŠ æ—¥å¿—
 /*
-*   _lvl ÈÕÖ¾µÈ¼¶
-*   _format ÈÕÖ¾¸ñÊ½
+*   _lvl æ—¥å¿—ç­‰çº§
+*   _format æ—¥å¿—æ ¼å¼
 */
 void CRingLog::TryAppendLog(const char* _lvl, const char* _format, ...) {
-    // Ê×ÏÈĞèÒª»ñÈ¡Ê±¼ä
-    int tMs = 0;   // Î¢Ãë
+    // é¦–å…ˆéœ€è¦è·å–æ—¶é—´
+    int tMs = 0;   // å¾®ç§’
     uint64_t curSec = m_sTM.GetCurTime(&tMs);
-    // ÏŞÖÆÉÏ´ÎÌí¼ÓÈÕÖ¾Ê§°ÜºóÔÙ´ÎÌí¼ÓÈÕÖ¾µÄÊ±¼ä¼ä¸ô
+    // é™åˆ¶ä¸Šæ¬¡æ·»åŠ æ—¥å¿—å¤±è´¥åå†æ¬¡æ·»åŠ æ—¥å¿—çš„æ—¶é—´é—´éš”
     if (m_uLastLogFailTime && curSec - m_uLastLogFailTime < RELOGTHRESOLD)
         return;
 
@@ -220,37 +220,37 @@ void CRingLog::TryAppendLog(const char* _lvl, const char* _format, ...) {
 
     uint32_t logLen = preLen + postLen;
 
-    // ÖØÖÃÈÕÖ¾Ê§°ÜÊ±¼ä
+    // é‡ç½®æ—¥å¿—å¤±è´¥æ—¶é—´
     m_uLastLogFailTime = 0;
-    // ¸øÏû·ÑÏß³ÌµÄĞÅÏ¢±êÖ¾
+    // ç»™æ¶ˆè´¹çº¿ç¨‹çš„ä¿¡æ¯æ ‡å¿—
     bool backFlag = false;
 
-    // ½ÓÏÂÀ´ÒªÏòµ¥ÔªÄÚĞ´ÈÕÖ¾£¬ĞèÒª¼ÓËø
-    m_cLocker.lock();
+    // æ¥ä¸‹æ¥è¦å‘å•å…ƒå†…å†™æ—¥å¿—ï¼Œéœ€è¦åŠ é”
+    m_cLocker.Lock();
     if (m_pCurBuf->m_eStatus == CBufferCell::BUFFER_STATUS::FREE && m_pCurBuf->GetFreeLen() >= logLen) {
-        // µ±Ç°ÈÕÖ¾µ¥ÔªÊÇ¿ÕÏĞ×´Ì¬²¢ÇÒÊ£Óà³¤¶È×ã¹»
+        // å½“å‰æ—¥å¿—å•å…ƒæ˜¯ç©ºé—²çŠ¶æ€å¹¶ä¸”å‰©ä½™é•¿åº¦è¶³å¤Ÿ
         m_pCurBuf->Append(logLine, logLen);
-        m_cLocker.unlock();
+        m_cLocker.Unlock();
     }
     else {
-        // ³¤¶È²»¹»
+        // é•¿åº¦ä¸å¤Ÿ
         if (m_pCurBuf->m_eStatus == CBufferCell::BUFFER_STATUS::FREE) {
-            // ÏÈ¸ü¸Äµ±Ç°µ¥ÔªµÄ×´Ì¬
+            // å…ˆæ›´æ”¹å½“å‰å•å…ƒçš„çŠ¶æ€
             m_pCurBuf->m_eStatus = CBufferCell::BUFFER_STATUS::FULL;
-            // ÍùÇ°ÒÆ¶¯
+            // å¾€å‰ç§»åŠ¨
             CBufferCell* nextBuf = m_pCurBuf->m_pNext;
-            // µ±Ç°Õâ¸öµ¥Ôª¿ÉÒÔ³Ö¾Ã»¯ÁË£¬¿ÉÒÔÍ¨ÖªÏû·ÑÏß³Ì£¬ĞŞ¸Ä±êÖ¾×´Ì¬
+            // å½“å‰è¿™ä¸ªå•å…ƒå¯ä»¥æŒä¹…åŒ–äº†ï¼Œå¯ä»¥é€šçŸ¥æ¶ˆè´¹çº¿ç¨‹ï¼Œä¿®æ”¹æ ‡å¿—çŠ¶æ€
             backFlag = true;
-            // Èç¹ûÏÂÒ»¸öµ¥Ôª´ı³Ö¾Ã»¯£¬ÄÇÃ´ËµÃ÷ÂúÁË£¬ÒªÃ´À©Èİ£¬ÒªÃ´±¨´í
+            // å¦‚æœä¸‹ä¸€ä¸ªå•å…ƒå¾…æŒä¹…åŒ–ï¼Œé‚£ä¹ˆè¯´æ˜æ»¡äº†ï¼Œè¦ä¹ˆæ‰©å®¹ï¼Œè¦ä¹ˆæŠ¥é”™
             if (nextBuf->m_eStatus == CBufferCell::BUFFER_STATUS::FULL) {
-                // ¼ì²éµ±Ç°ÈİÁ¿,³¬¹ıÁË¾Í±¨´í
+                // æ£€æŸ¥å½“å‰å®¹é‡,è¶…è¿‡äº†å°±æŠ¥é”™
                 if (m_uOneBuffLen * (m_iBuffCnt + 1) > LOGFILEMEMLIMIT) {
                     fprintf(stderr, "no more log space can use\n");
                     m_pCurBuf = nextBuf;
                     m_uLastLogFailTime = curSec;
                 }
                 else {
-                    // À©ÔöÒ»¸öµ¥Ôª
+                    // æ‰©å¢ä¸€ä¸ªå•å…ƒ
                     CBufferCell* newBuffer = CreateCellBuffer(SHMKEY + m_iBuffCnt, m_uOneBuffLen);
                     m_iBuffCnt += 1;
                     newBuffer->m_pPre = m_pCurBuf;
@@ -267,48 +267,48 @@ void CRingLog::TryAppendLog(const char* _lvl, const char* _format, ...) {
             else {
                 m_pCurBuf = nextBuf;
             }
-            // »¹ÄÜÀ©ÈİµÄ»°¾ÍĞ´Èë
+            // è¿˜èƒ½æ‰©å®¹çš„è¯å°±å†™å…¥
             if (!m_uLastLogFailTime)
                 m_pCurBuf->Append(logLine, logLen);
         }
         else {
-            // ³Ö¾Ã»¯Ö¸ÕëÒ²ÔÚÕâ¶ù
-            // Ê§°Ü£¬¼ÇÂ¼Ê§°ÜÊ±¼ä
+            // æŒä¹…åŒ–æŒ‡é’ˆä¹Ÿåœ¨è¿™å„¿
+            // å¤±è´¥ï¼Œè®°å½•å¤±è´¥æ—¶é—´
             m_uLastLogFailTime = curSec;
         }
-        m_cLocker.unlock();
+        m_cLocker.Unlock();
     }
     if (backFlag)
-        m_cCond.signal();
+        m_cCond.Signal();
 }
 
 
-// ±£´æÈÕÖ¾
+// ä¿å­˜æ—¥å¿—
 void CRingLog::PersistLog() {
     while (true) {
-        // ĞèÒª¶ÔÈÕÖ¾½øĞĞ²Ù×÷
-        m_cLocker.lock();
+        // éœ€è¦å¯¹æ—¥å¿—è¿›è¡Œæ“ä½œ
+        m_cLocker.Lock();
         if (m_pPrstBuf->m_eStatus == CBufferCell::BUFFER_STATUS::FREE) {
-            // µ±Ç°Î»ÖÃÊÇ¿ÕÏĞ£¬ËµÃ÷»¹Ã»ÓĞĞ´Èë£¬ĞèÒªµÈ´ı
+            // å½“å‰ä½ç½®æ˜¯ç©ºé—²ï¼Œè¯´æ˜è¿˜æ²¡æœ‰å†™å…¥ï¼Œéœ€è¦ç­‰å¾…
             struct timeval tTv;
             struct timespec tTs;
             gettimeofday(&tTv, NULL);
             tTs.tv_sec = tTv.tv_sec + LOGWAITTIME;
             tTs.tv_nsec = tTv.tv_usec * 1000;
-            m_cCond.wait_time(m_cLocker.get(), tTs);
+            m_cCond.WaitTime(m_cLocker.GetMutex(), tTs);
         }
 
-        //  »¹Ã»ÓĞ¿ªÊ¼Ğ´ÈÕÖ¾
+        //  è¿˜æ²¡æœ‰å¼€å§‹å†™æ—¥å¿—
         if (m_pPrstBuf->IsEmpty()) {
-            m_cLocker.unlock();
+            m_cLocker.Unlock();
             continue;
         }
 
         if (m_pPrstBuf->m_eStatus == CBufferCell::BUFFER_STATUS::FREE) {
-            // Èç¹û»¹ÊÇfree£¬ÄÇÃ´Ö±½Ó¸ÄÎªfull£¬¼ÌĞøÍùÏÂ
-            // ÅĞ¶ÏĞ´ÈëÖ¸ÕëºÍ³Ö¾Ã»¯Ê±ÕëÊÇ·ñÊÇÍ¬Ò»¸ö£¬ÒòÎªÈç¹û²»ÊÇµÄ»°£¬µ±Ç°³Ö¾Ã»¯Ö¸ÕëËùÖ¸ÏòµÄbuffer¿Ï¶¨ÊÇFULL
+            // å¦‚æœè¿˜æ˜¯freeï¼Œé‚£ä¹ˆç›´æ¥æ”¹ä¸ºfullï¼Œç»§ç»­å¾€ä¸‹
+            // åˆ¤æ–­å†™å…¥æŒ‡é’ˆå’ŒæŒä¹…åŒ–æ—¶é’ˆæ˜¯å¦æ˜¯åŒä¸€ä¸ªï¼Œå› ä¸ºå¦‚æœä¸æ˜¯çš„è¯ï¼Œå½“å‰æŒä¹…åŒ–æŒ‡é’ˆæ‰€æŒ‡å‘çš„bufferè‚¯å®šæ˜¯FULL
             assert(m_pCurBuf == m_pPrstBuf);
-            // ½«µ±Ç°×´Ì¬¸ÄÎªfullÈ»ºó½«Ğ´ÈëÖ¸ÕëÍùÏÂÒÆ¶¯
+            // å°†å½“å‰çŠ¶æ€æ”¹ä¸ºfullç„¶åå°†å†™å…¥æŒ‡é’ˆå¾€ä¸‹ç§»åŠ¨
             m_pCurBuf->m_eStatus = CBufferCell::BUFFER_STATUS::FULL;
             m_pCurBuf = m_pCurBuf->m_pNext;
         }
@@ -316,21 +316,21 @@ void CRingLog::PersistLog() {
         int year = m_sTM.m_year;
         int mon = m_sTM.m_month;
         int day = m_sTM.m_day;
-        m_cLocker.unlock();
+        m_cLocker.Unlock();
 
-        // Èç¹û´ò¿ªÈÕÖ¾ÎÄ¼şÓĞÎó£¬ÎÄ¼şÖ¸ÕëÎª¿Õ
+        // å¦‚æœæ‰“å¼€æ—¥å¿—æ–‡ä»¶æœ‰è¯¯ï¼Œæ–‡ä»¶æŒ‡é’ˆä¸ºç©º
         if (!DecisFile(year, mon, day))
             continue;
 
-        // ½«³Ö¾Ã»¯Ö¸ÕëÖ¸ÏòµÄÈÕÖ¾µ¥Ôª½øĞĞ³Ö¾Ã»¯
+        // å°†æŒä¹…åŒ–æŒ‡é’ˆæŒ‡å‘çš„æ—¥å¿—å•å…ƒè¿›è¡ŒæŒä¹…åŒ–
         m_pPrstBuf->Persist(m_pFp);
         fflush(m_pFp);
 
-        m_cLocker.lock();
+        m_cLocker.Lock();
         m_pPrstBuf->ClearBuffer();
         m_pPrstBuf = m_pPrstBuf->m_pNext;
         *m_pPrstBCShmId = m_pPrstBuf->m_iShmId;
-        m_cLocker.unlock();
+        m_cLocker.Unlock();
     }
 }
 

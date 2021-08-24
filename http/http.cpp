@@ -8,7 +8,7 @@
 #include <stdarg.h> // va_start
 #include <sys/mman.h>   // mmap
 
-//¶¨ÒåhttpÏìÓ¦µÄÒ»Ğ©×´Ì¬ĞÅÏ¢
+//å®šä¹‰httpå“åº”çš„ä¸€äº›çŠ¶æ€ä¿¡æ¯
 const char* ok_200_title = "OK";
 const char* error_400_title = "Bad Request";
 const char* error_400_form = "Your request has bad syntax or is inherently impossible to staisfy.\n";
@@ -19,8 +19,9 @@ const char* error_404_form = "The requested file was not found on this server.\n
 const char* error_500_title = "Internal Error";
 const char* error_500_form = "There was an unusual problem serving the request file.\n";
 
-// ½á¹¹Ìå³õÊ¼»¯
+// ç»“æ„ä½“åˆå§‹åŒ–
 void SHttpRequest::Init() {
+    LOG_TRACE("SHttpRequest::Init");
     m_eDecodeState = HttpRequestDecodeState::START;
     m_iNextPos = 0;
     m_bIsOpen = false;
@@ -32,8 +33,9 @@ void SHttpRequest::Init() {
     m_strVersion.clear();
     m_mRequestParams.clear();
 }
-// Ğ­Òé½âÎö
+// åè®®è§£æ
 void SHttpRequest::ParseInternal(const char* buf, int size) {
+    LOG_TRACE("ParseInternal");
 
     StringBuffer method;
     StringBuffer url;
@@ -49,7 +51,7 @@ void SHttpRequest::ParseInternal(const char* buf, int size) {
 
     int bodyLength = 0;
 
-    char* p0 = const_cast<char*>(buf + m_iNextPos);//È¥µôconstÏŞÖÆ
+    char* p0 = const_cast<char*>(buf + m_iNextPos);//å»æ‰consté™åˆ¶
 
     while (m_eDecodeState != HttpRequestDecodeState::INVALID
         && m_eDecodeState != HttpRequestDecodeState::INVALID_METHOD
@@ -59,19 +61,19 @@ void SHttpRequest::ParseInternal(const char* buf, int size) {
         && m_eDecodeState != HttpRequestDecodeState::COMPLETE
         && m_iNextPos < size) {
 
-        char ch = *p0;//µ±Ç°µÄ×Ö·û
-        char* p = p0++;//Ö¸ÕëÆ«ÒÆ
-        int scanPos = m_iNextPos++;//ÏÂÒ»¸öÖ¸ÕëÍùºóÆ«ÒÆ
+        char ch = *p0;//å½“å‰çš„å­—ç¬¦
+        char* p = p0++;//æŒ‡é’ˆåç§»
+        int scanPos = m_iNextPos++;//ä¸‹ä¸€ä¸ªæŒ‡é’ˆå¾€ååç§»
 
         switch (m_eDecodeState) {
         case HttpRequestDecodeState::START: {
-            //¿Õ¸ñ »»ĞĞ »Ø³µ¶¼¼ÌĞø
+            //ç©ºæ ¼ æ¢è¡Œ å›è½¦éƒ½ç»§ç»­
             if (ch == CR || ch == LF || isblank(ch)) {
                 //do nothing
             }
-            else if (isupper(ch)) {//ÅĞ¶ÏÊÇ²»ÊÇ´óĞ´×Ö·û£¬²»ÊÇµÄ»°ÊÇÎŞĞ§µÄ
-                method.m_pBegin = p;//·½·¨µÄÆğÊ¼µã
-                m_eDecodeState = HttpRequestDecodeState::METHOD;//Èç¹ûÓöµ½µÚÒ»¸ö×Ö·û£¬¿ªÊ¼½âÎö·½·¨
+            else if (isupper(ch)) {//åˆ¤æ–­æ˜¯ä¸æ˜¯å¤§å†™å­—ç¬¦ï¼Œä¸æ˜¯çš„è¯æ˜¯æ— æ•ˆçš„
+                method.m_pBegin = p;//æ–¹æ³•çš„èµ·å§‹ç‚¹
+                m_eDecodeState = HttpRequestDecodeState::METHOD;//å¦‚æœé‡åˆ°ç¬¬ä¸€ä¸ªå­—ç¬¦ï¼Œå¼€å§‹è§£ææ–¹æ³•
             }
             else {
                 m_eDecodeState = HttpRequestDecodeState::INVALID;
@@ -79,42 +81,42 @@ void SHttpRequest::ParseInternal(const char* buf, int size) {
             break;
         }
         case HttpRequestDecodeState::METHOD: {
-            //·½·¨ĞèÒª´óĞ´×ÖÄ¸£¬´óĞ´×ÖÄ¸¾Í¼ÌĞø
+            //æ–¹æ³•éœ€è¦å¤§å†™å­—æ¯ï¼Œå¤§å†™å­—æ¯å°±ç»§ç»­
             if (isupper(ch)) {
                 //do nothing
             }
-            else if (isblank(ch)) {//¿Õ¸ñ£¬ËµÃ÷·½·¨½âÎö½áÊø£¬ÏÂÒ»²½¿ªÊ¼½âÎöURI
-                method.m_pEnd = p;//·½·¨½âÎö½áÊø
+            else if (isblank(ch)) {//ç©ºæ ¼ï¼Œè¯´æ˜æ–¹æ³•è§£æç»“æŸï¼Œä¸‹ä¸€æ­¥å¼€å§‹è§£æURI
+                method.m_pEnd = p;//æ–¹æ³•è§£æç»“æŸ
                 m_strMethod = method;
                 m_eDecodeState = HttpRequestDecodeState::BEFORE_URI;
             }
             else {
-                m_eDecodeState = HttpRequestDecodeState::INVALID_METHOD;//ÆäËûÇé¿öÊÇÎŞĞ§µÄÇëÇó·½·¨
+                m_eDecodeState = HttpRequestDecodeState::INVALID_METHOD;//å…¶ä»–æƒ…å†µæ˜¯æ— æ•ˆçš„è¯·æ±‚æ–¹æ³•
             }
             break;
         }
         case HttpRequestDecodeState::BEFORE_URI: {
-            //ÇëÇóÁ¬½ÓÇ°µÄ´¦Àí£¬ĞèÒª'/'¿ªÍ·
+            //è¯·æ±‚è¿æ¥å‰çš„å¤„ç†ï¼Œéœ€è¦'/'å¼€å¤´
             if (ch == '/') {
                 url.m_pBegin = p;
-                m_eDecodeState = HttpRequestDecodeState::IN_URI;//ÏÂÒ»²½¾ÍÊÇ¿ªÊ¼´¦ÀíÁ¬½Ó
+                m_eDecodeState = HttpRequestDecodeState::IN_URI;//ä¸‹ä¸€æ­¥å°±æ˜¯å¼€å§‹å¤„ç†è¿æ¥
             }
             else if (isblank(ch)) {
                 //do nothing
             }
             else {
-                m_eDecodeState = HttpRequestDecodeState::INVALID;//ÎŞĞ§µÄ
+                m_eDecodeState = HttpRequestDecodeState::INVALID;//æ— æ•ˆçš„
             }
             break;
         }
         case HttpRequestDecodeState::IN_URI: {
-            //¿ªÊ¼´¦ÀíÇëÇóÂ·¾¶µÄ×Ö·û´®
-            if (ch == '?') {//×ªÎª´¦ÀíÇëÇóµÄkeyÖµ
+            //å¼€å§‹å¤„ç†è¯·æ±‚è·¯å¾„çš„å­—ç¬¦ä¸²
+            if (ch == '?') {//è½¬ä¸ºå¤„ç†è¯·æ±‚çš„keyå€¼
                 url.m_pEnd = p;
                 m_strUrl = url;
                 m_eDecodeState = HttpRequestDecodeState::BEFORE_URI_PARAM_KEY;
             }
-            else if (isblank(ch)) {//Óöµ½¿Õ¸ñ£¬ÇëÇóÂ·¾¶½âÎöÍê³É£¬¿ªÊ¼½âÎöĞ­Òé
+            else if (isblank(ch)) {//é‡åˆ°ç©ºæ ¼ï¼Œè¯·æ±‚è·¯å¾„è§£æå®Œæˆï¼Œå¼€å§‹è§£æåè®®
                 url.m_pEnd = p;
                 m_strUrl = url;
                 m_eDecodeState = HttpRequestDecodeState::BEFORE_PROTOCOL;
@@ -137,10 +139,10 @@ void SHttpRequest::ParseInternal(const char* buf, int size) {
         case HttpRequestDecodeState::URI_PARAM_KEY: {
             if (ch == '=') {
                 requestParamKey.m_pEnd = p;
-                m_eDecodeState = HttpRequestDecodeState::BEFORE_URI_PARAM_VALUE;//¿ªÊ¼½âÎö²ÎÊıÖµ
+                m_eDecodeState = HttpRequestDecodeState::BEFORE_URI_PARAM_VALUE;//å¼€å§‹è§£æå‚æ•°å€¼
             }
             else if (isblank(ch)) {
-                m_eDecodeState = HttpRequestDecodeState::INVALID_URI;//ÎŞĞ§µÄÇëÇó²ÎÊı
+                m_eDecodeState = HttpRequestDecodeState::INVALID_URI;//æ— æ•ˆçš„è¯·æ±‚å‚æ•°
             }
             else {
                 //do nothing
@@ -160,13 +162,13 @@ void SHttpRequest::ParseInternal(const char* buf, int size) {
         case HttpRequestDecodeState::URI_PARAM_VALUE: {
             if (ch == '&') {
                 requestParamValue.m_pEnd = p;
-                //ÊÕ»ñÒ»¸öÇëÇó²ÎÊı
+                //æ”¶è·ä¸€ä¸ªè¯·æ±‚å‚æ•°
                 m_mRequestParams.insert({ requestParamKey, requestParamValue });
                 m_eDecodeState = HttpRequestDecodeState::BEFORE_URI_PARAM_KEY;
             }
             else if (isblank(ch)) {
                 requestParamValue.m_pEnd = p;
-                //¿Õ¸ñÒ²ÊÕ»ñÒ»¸öÇëÇó²ÎÊı
+                //ç©ºæ ¼ä¹Ÿæ”¶è·ä¸€ä¸ªè¯·æ±‚å‚æ•°
                 m_mRequestParams.insert({ requestParamKey, requestParamValue });
                 m_eDecodeState = HttpRequestDecodeState::BEFORE_PROTOCOL;
             }
@@ -186,7 +188,7 @@ void SHttpRequest::ParseInternal(const char* buf, int size) {
             break;
         }
         case HttpRequestDecodeState::PROTOCOL: {
-            //½âÎöÇëÇóĞ­Òé
+            //è§£æè¯·æ±‚åè®®
             if (ch == '/') {
                 protocol.m_pEnd = p;
                 m_strProtocol = protocol;
@@ -208,26 +210,26 @@ void SHttpRequest::ParseInternal(const char* buf, int size) {
             break;
         }
         case HttpRequestDecodeState::VERSION: {
-            //Ğ­Òé½âÎö£¬Èç¹û²»ÊÇÊı×Ö»òÕß. ¾Í²»¶Ô
+            //åè®®è§£æï¼Œå¦‚æœä¸æ˜¯æ•°å­—æˆ–è€…. å°±ä¸å¯¹
             if (ch == CR) {
                 version.m_pEnd = p;
                 m_strVersion = version;
                 m_eDecodeState = HttpRequestDecodeState::WHEN_CR;
             }
             else if (ch == '.') {
-                //Óöµ½°æ±¾·Ö¸î
+                //é‡åˆ°ç‰ˆæœ¬åˆ†å‰²
                 m_eDecodeState = HttpRequestDecodeState::VERSION_SPLIT;
             }
             else if (isdigit(ch)) {
                 //do nothing
             }
             else {
-                m_eDecodeState = HttpRequestDecodeState::INVALID_VERSION;//²»ÄÜ²»ÊÇÊı×Ö
+                m_eDecodeState = HttpRequestDecodeState::INVALID_VERSION;//ä¸èƒ½ä¸æ˜¯æ•°å­—
             }
             break;
         }
         case HttpRequestDecodeState::VERSION_SPLIT: {
-            //Óöµ½°æ±¾·Ö¸î·û£¬×Ö·û±ØĞëÊÇÊı×Ö£¬ÆäËûÇé¿ö¶¼ÊÇ´íÎó
+            //é‡åˆ°ç‰ˆæœ¬åˆ†å‰²ç¬¦ï¼Œå­—ç¬¦å¿…é¡»æ˜¯æ•°å­—ï¼Œå…¶ä»–æƒ…å†µéƒ½æ˜¯é”™è¯¯
             if (isdigit(ch)) {
                 m_eDecodeState = HttpRequestDecodeState::VERSION;
             }
@@ -237,14 +239,14 @@ void SHttpRequest::ParseInternal(const char* buf, int size) {
             break;
         }
         case HttpRequestDecodeState::HEADER_KEY: {
-            //Ã°ºÅÇ°ºó¿ÉÄÜÓĞ¿Õ¸ñ
+            //å†’å·å‰åå¯èƒ½æœ‰ç©ºæ ¼
             if (isblank(ch)) {
                 headerKey.m_pEnd = p;
-                m_eDecodeState = HttpRequestDecodeState::HEADER_BEFORE_COLON;//Ã°ºÅÖ®Ç°µÄ×´Ì¬
+                m_eDecodeState = HttpRequestDecodeState::HEADER_BEFORE_COLON;//å†’å·ä¹‹å‰çš„çŠ¶æ€
             }
             else if (ch == ':') {
                 headerKey.m_pEnd = p;
-                m_eDecodeState = HttpRequestDecodeState::HEADER_AFTER_COLON;//Ã°ºÅÖ®ºóµÄ×´Ì¬
+                m_eDecodeState = HttpRequestDecodeState::HEADER_AFTER_COLON;//å†’å·ä¹‹åçš„çŠ¶æ€
             }
             else {
                 //do nothing
@@ -259,18 +261,18 @@ void SHttpRequest::ParseInternal(const char* buf, int size) {
                 m_eDecodeState = HttpRequestDecodeState::HEADER_AFTER_COLON;
             }
             else {
-                //Ã°ºÅÖ®Ç°µÄ×´Ì¬²»ÄÜÊÇ¿Õ¸ñÖ®ÍâµÄÆäËû×Ö·û
+                //å†’å·ä¹‹å‰çš„çŠ¶æ€ä¸èƒ½æ˜¯ç©ºæ ¼ä¹‹å¤–çš„å…¶ä»–å­—ç¬¦
                 m_eDecodeState = HttpRequestDecodeState::INVALID_HEADER;
             }
             break;
         }
         case HttpRequestDecodeState::HEADER_AFTER_COLON: {
-            if (isblank(ch)) {//ÖµÖ®Ç°Óöµ½¿Õ¸ñ¶¼ÊÇÕı³£µÄ
+            if (isblank(ch)) {//å€¼ä¹‹å‰é‡åˆ°ç©ºæ ¼éƒ½æ˜¯æ­£å¸¸çš„
                 //do nothing
             }
             else {
                 headerValue.m_pBegin = p;
-                m_eDecodeState = HttpRequestDecodeState::HEADER_VALUE;//¿ªÊ¼´¦ÀíÖµ
+                m_eDecodeState = HttpRequestDecodeState::HEADER_VALUE;//å¼€å§‹å¤„ç†å€¼
             }
             break;
         }
@@ -284,7 +286,7 @@ void SHttpRequest::ParseInternal(const char* buf, int size) {
         }
         case HttpRequestDecodeState::WHEN_CR: {
             if (ch == LF) {
-                //Èç¹ûÊÇ»Ø³µ£¬¿É»»³ÉÏÂÒ»¸ö
+                //å¦‚æœæ˜¯å›è½¦ï¼Œå¯æ¢æˆä¸‹ä¸€ä¸ª
                 m_eDecodeState = HttpRequestDecodeState::CR_LF;
             }
             else {
@@ -294,14 +296,14 @@ void SHttpRequest::ParseInternal(const char* buf, int size) {
         }
         case HttpRequestDecodeState::CR_LF: {
             if (ch == CR) {
-                //Èç¹ûÔÚCR_LF×´Ì¬Ö®ºó»¹ÓĞCR£¬ÄÇÃ´±ãÊÇÓĞµã½áÊøµÄÎ¶µÀÁË
+                //å¦‚æœåœ¨CR_LFçŠ¶æ€ä¹‹åè¿˜æœ‰CRï¼Œé‚£ä¹ˆä¾¿æ˜¯æœ‰ç‚¹ç»“æŸçš„å‘³é“äº†
                 m_eDecodeState = HttpRequestDecodeState::CR_LF_CR;
             }
             else if (isblank(ch)) {
                 m_eDecodeState = HttpRequestDecodeState::INVALID;
             }
             else {
-                //Èç¹û²»ÊÇ£¬ÄÇÃ´¾Í¿ÉÄÜÓÖÊÇÒ»¸öÇëÇóÍ·ÁË£¬ÄÇ¾Í¿ªÊ¼½âÎöÇëÇóÍ·
+                //å¦‚æœä¸æ˜¯ï¼Œé‚£ä¹ˆå°±å¯èƒ½åˆæ˜¯ä¸€ä¸ªè¯·æ±‚å¤´äº†ï¼Œé‚£å°±å¼€å§‹è§£æè¯·æ±‚å¤´
                 headerKey.m_pBegin = p;
                 m_eDecodeState = HttpRequestDecodeState::HEADER_KEY;
             }
@@ -309,20 +311,20 @@ void SHttpRequest::ParseInternal(const char* buf, int size) {
         }
         case HttpRequestDecodeState::CR_LF_CR: {
             if (ch == LF) {
-                //Èç¹ûÊÇ\r½Ó×Å\n ÄÇÃ´ÅĞ¶ÏÊÇ²»ÊÇĞèÒª½âÎöÇëÇóÌå
+                //å¦‚æœæ˜¯\ræ¥ç€\n é‚£ä¹ˆåˆ¤æ–­æ˜¯ä¸æ˜¯éœ€è¦è§£æè¯·æ±‚ä½“
                 if (m_mHeaders.count("Content-Length") > 0) {
                     bodyLength = atoi(m_mHeaders["Content-Length"].c_str());
                     if (bodyLength > 0) {
-                        m_eDecodeState = HttpRequestDecodeState::BODY;//½âÎöÇëÇóÌå
+                        m_eDecodeState = HttpRequestDecodeState::BODY;//è§£æè¯·æ±‚ä½“
                     }
                     else {
-                        m_eDecodeState = HttpRequestDecodeState::COMPLETE;//Íê³ÉÁË
+                        m_eDecodeState = HttpRequestDecodeState::COMPLETE;//å®Œæˆäº†
                     }
                 }
                 else {
                     if (scanPos < size) {
                         bodyLength = size - scanPos;
-                        m_eDecodeState = HttpRequestDecodeState::BODY;//½âÎöÇëÇóÌå
+                        m_eDecodeState = HttpRequestDecodeState::BODY;//è§£æè¯·æ±‚ä½“
                     }
                     else {
                         m_eDecodeState = HttpRequestDecodeState::COMPLETE;
@@ -335,7 +337,7 @@ void SHttpRequest::ParseInternal(const char* buf, int size) {
             break;
         }
         case HttpRequestDecodeState::BODY: {
-            //½âÎöÇëÇóÌå
+            //è§£æè¯·æ±‚ä½“
             m_strBody.assign(p, bodyLength);
             m_eDecodeState = HttpRequestDecodeState::COMPLETE;
             break;
@@ -382,8 +384,8 @@ const HttpRequestDecodeState SHttpRequest::GetStatus() const {
     return m_eDecodeState;
 }
 
-// ÎÄ¼ş²Ù×÷·ûº¯Êı
-// ÎÄ¼şÃèÊö·û·Ç×èÈû
+// æ–‡ä»¶æ“ä½œç¬¦å‡½æ•°
+// æ–‡ä»¶æè¿°ç¬¦éé˜»å¡
 int SetNonBlocking(int _fd) {
     int oldOption = fcntl(_fd, F_GETFL);
     int newOption = oldOption | O_NONBLOCK;
@@ -391,43 +393,42 @@ int SetNonBlocking(int _fd) {
     return oldOption;
 }
 
-// ÏòepollÖĞ×¢²áÎÄ¼şÃèÊö·û
+// å‘epollä¸­æ³¨å†Œæ–‡ä»¶æè¿°ç¬¦
 void AddFd(int _epollFd, int _fd, bool _oneShot, int _triggerMode) {
+    LOG_TRACE("Add fd : %d", _fd);
     epoll_event event;
     event.data.fd = _fd;
     if (_triggerMode == 1)
-        event.events = EPOLLIN | EPOLLRDHUP | EPOLLET; // ÆôÓÃETÄ£Ê½
+        event.events = EPOLLIN | EPOLLRDHUP | EPOLLET; // å¯ç”¨ETæ¨¡å¼
     else 
-        event.events = EPOLLIN | EPOLLRDHUP;           // ÆôÓÃLTÄ£Ê½
+        event.events = EPOLLIN | EPOLLRDHUP;           // å¯ç”¨LTæ¨¡å¼
 
     if (_oneShot)
         event.events |= EPOLLONESHOT;
     epoll_ctl(_epollFd, EPOLL_CTL_ADD, _fd, &event);
-    
     SetNonBlocking(_fd);
-    LOG_INFO("Add fd : %d", _fd);
 }
 
 void RemoveFd(int _epollFd, int _fd) {
+    LOG_TRACE("Remove fd : %d", _fd);
     epoll_ctl(_epollFd, EPOLL_CTL_DEL, _fd, nullptr);
     close(_fd);
 }
 
-// ÊÂ¼ş´¥·¢ºó£¬ĞèÒªÖØÖÃoneshot
+// äº‹ä»¶è§¦å‘åï¼Œéœ€è¦é‡ç½®oneshot
 void ModFd(int _epollFd, int _fd, int _event, int _triggerMode) {
+    LOG_INFO("ModFd fd : %d", _fd);
     epoll_event event;
     event.data.fd = _fd;
-
     if (_triggerMode == 1)
         event.events = _event | EPOLLET | EPOLLONESHOT | EPOLLRDHUP;
     else
         event.events = _event | EPOLLONESHOT | EPOLLRDHUP;
     epoll_ctl(_epollFd, EPOLL_CTL_MOD, _fd, &event);
-    LOG_INFO("ModFd fd : %d", _fd);
 }
 
 
-// ¾²Ì¬±äÁ¿³õÊ¼»¯
+// é™æ€å˜é‡åˆå§‹åŒ–
 int CHttp::m_iEpollFd = -1;
 int CHttp::m_iHttpCnt = 0;
 char CHttp::m_aFilePathPrefix[100] = "";
@@ -455,25 +456,26 @@ void CHttp::Init(int _sockfd, const sockaddr_in& _addr, int _triggerMode) {
 void CHttp::CloseHttp() {
     if (m_iSockFd == -1)
         return;
-    LOG_INFO("close %d", m_iSockFd);
+    LOG_TRACE("close %d", m_iSockFd);
     RemoveFd(m_iEpollFd, m_iSockFd);
     m_iSockFd = -1;
     m_iHttpCnt--;
 }
 
 void CHttp::unmmap() {
+    LOG_TRACE("unmmap");
     if (m_pFileAddr) {
         munmap(m_pFileAddr, m_sFileStat.st_size);
         m_pFileAddr = nullptr;
     }
 }
 
-// ±©Â¶¸øeventloopµÄ¶ÁÊı¾İ½Ó¿Ú£¬¶ÁÈ¡sockfdÉÏµÄÊı¾İ£¬»á¸ù¾İetºÍlt·Ö±ğ´¦Àí
-// µ±¼àÌıµ½sockfdÉÏÓĞ¿É¶ÁÊÂ¼şÊ±£¬¾Íµ÷ÓÃ´Ë½Ó¿Ú£¬¶ÁÈ¡Êı¾İ
+// æš´éœ²ç»™eventloopçš„è¯»æ•°æ®æ¥å£ï¼Œè¯»å–sockfdä¸Šçš„æ•°æ®ï¼Œä¼šæ ¹æ®etå’Œltåˆ†åˆ«å¤„ç†
+// å½“ç›‘å¬åˆ°sockfdä¸Šæœ‰å¯è¯»äº‹ä»¶æ—¶ï¼Œå°±è°ƒç”¨æ­¤æ¥å£ï¼Œè¯»å–æ•°æ®
 bool CHttp::Read() {
-    // ¼ì²é»º³åÇøÊÇ·ñÒç³ö
+    // æ£€æŸ¥ç¼“å†²åŒºæ˜¯å¦æº¢å‡º
     if (m_iReadIdx >= MAX_READ_DATA_BUFF_SIZE) {
-        LOG_INFO("¶Á»º³åÇøÒç³ö\n");
+        LOG_ERROR("Read buffer overflow, limit is :%d", MAX_READ_DATA_BUFF_SIZE);
         return false;
     }
 
@@ -482,10 +484,11 @@ bool CHttp::Read() {
     if (m_iTriggerMode) {
         // ET
         while (true) {
-            // ĞèÒªÒ»Ö±¶Á£¬Ö±µ½´íÎóÊÇEAGAIN»òEWOULDBLOCK²ÅÍË³ö
+            // éœ€è¦ä¸€ç›´è¯»ï¼Œç›´åˆ°é”™è¯¯æ˜¯EAGAINæˆ–EWOULDBLOCKæ‰é€€å‡º
             recLen = recv(m_iSockFd, m_aReadData + m_iReadIdx, MAX_READ_DATA_BUFF_SIZE - m_iReadIdx, 0);
             if (recLen == -1) {
-                // ±¨´í
+                // æŠ¥é”™
+                LOG_ERROR("Read wrong, errno is: %d", errno);
                 if (errno == EAGAIN || errno == EWOULDBLOCK)
                     break;
                 return false;
@@ -498,20 +501,22 @@ bool CHttp::Read() {
     }
     else {
         recLen = recv(m_iSockFd, m_aReadData + m_iReadIdx, MAX_READ_DATA_BUFF_SIZE - m_iReadIdx, 0);
-        if (recLen <= 0)
+        if (recLen <= 0) {
+            LOG_ERROR("Read wrong, errno is: %d", errno);
             return false;
+        }
         m_iReadIdx += recLen;
         return true;
     }
 }
 
-// eventloop½Ó¿Ú£¬µ±sockfd´¥·¢epolloutÊÂ¼şÊ±£¬ÓÃ´Ë½Ó¿ÚÏòsockfdÉÏĞ´ÈëÊı¾İ
+// eventloopæ¥å£ï¼Œå½“sockfdè§¦å‘epolloutäº‹ä»¶æ—¶ï¼Œç”¨æ­¤æ¥å£å‘sockfdä¸Šå†™å…¥æ•°æ®
 bool CHttp::Write() {
     int temp = 0;
 
     if (m_iDataLen == 0) {
         ModFd(m_iEpollFd, m_iSockFd, EPOLLIN, m_iTriggerMode);
-        // ³õÊ¼»¯
+        // åˆå§‹åŒ–
         m_iReadIdx = 0;
         m_iWriteIdx = 0;
         m_iDataLen = 0;
@@ -523,8 +528,9 @@ bool CHttp::Write() {
     }
     while (1) {
         temp = writev(m_iSockFd, m_sIv, m_iIvCount);
-        LOG_INFO("write : %d, m_sIv[0].iov_len : %d, m_sIv[1].iov_len : %d, m_iDataLen : %d, m_iWriteIdx : %d", temp, m_sIv[0].iov_len, m_sIv[1].iov_len, m_iDataLen, m_iWriteIdx);
+        LOG_TRACE("write : %d, m_sIv[0].iov_len : %d, m_sIv[1].iov_len : %d, m_iDataLen : %d, m_iWriteIdx : %d", temp, m_sIv[0].iov_len, m_sIv[1].iov_len, m_iDataLen, m_iWriteIdx);
         if (temp < 0) {
+            LOG_ERROR("Write wrong, errno is: %d", errno);
             if (errno == EAGAIN) {
                 ModFd(m_iEpollFd, m_iSockFd, EPOLLOUT, m_iTriggerMode);
                 return true;
@@ -538,7 +544,7 @@ bool CHttp::Write() {
             unmmap();
             ModFd(m_iEpollFd, m_iSockFd, EPOLLIN, m_iTriggerMode);
             if (m_bLinger) {
-                LOG_INFO("once success and Linger");
+                LOG_TRACE("write onetiem over and linger");
                 m_iReadIdx = 0;
                 m_iWriteIdx = 0;
                 m_iDataLen = 0;
@@ -568,14 +574,14 @@ bool CHttp::Write() {
 }
 
 HttpRequestDecodeState CHttp::ParseRead() {
-    // ´¦Àí¶ÁÈ¡µ½»º³åÇøµÄÊı¾İ£¬Èç¹û²»ÍêÕû£¬·µ»Øfalse£¬²¢ÇÒ¼ÌĞø¼àÌı¿É¶ÁÊÂ¼ş
+    // å¤„ç†è¯»å–åˆ°ç¼“å†²åŒºçš„æ•°æ®ï¼Œå¦‚æœä¸å®Œæ•´ï¼Œè¿”å›falseï¼Œå¹¶ä¸”ç»§ç»­ç›‘å¬å¯è¯»äº‹ä»¶
     m_sHttpParse.ParseInternal(m_aReadData, m_iReadIdx);
     HttpRequestDecodeState status = m_sHttpParse.GetStatus();
-    LOG_INFO("deal http request wrong, now State machine is: %d, current content is :%s", (int)status, m_aReadData);
+    LOG_TRACE("deal http request, now State machine is: %d, current content is :%s", (int)status, m_aReadData);
     if (m_sHttpParse.GetLen() == m_iReadIdx) {
-        // ËµÃ÷¶Áµ½ÁËÄ©Î²
+        // è¯´æ˜è¯»åˆ°äº†æœ«å°¾
         if (status == HttpRequestDecodeState::BODY && m_sHttpParse.GetMethod() == "GET") {
-            // ËµÃ÷ÊÇGet·½·¨£¬Ö»ÒªÊÇBody¾ÍÊÇ³É¹¦
+            // è¯´æ˜æ˜¯Getæ–¹æ³•ï¼Œåªè¦æ˜¯Bodyå°±æ˜¯æˆåŠŸ
             return HttpRequestDecodeState::COMPLETE;
         }
         if (status != HttpRequestDecodeState::INVALID_VERSION &&
@@ -597,14 +603,14 @@ bool CHttp::AddLine(const char* _format, ...) {
     va_start(arglist, _format);
     int len = vsnprintf(m_aWriteData + m_iWriteIdx, MAX_WRITE_DATA_BUFF_SIZE - 1 - m_iWriteIdx, _format, arglist);
     if (len >= MAX_WRITE_DATA_BUFF_SIZE - 1 - m_iWriteIdx) {
-        // ³¤¶È³¬³öÏŞÖÆ
+        // é•¿åº¦è¶…å‡ºé™åˆ¶
         va_end(arglist);
-        LOG_ERROR("Ğ´»º³åÇøÒç³ö");
+        LOG_ERROR("Write buffer overflow");
         return false;
     }
     m_iWriteIdx += len;
     va_end(arglist);
-    LOG_INFO("add line:%s", m_aWriteData + m_iWriteIdx - len);
+    LOG_TRACE("add line:%s", m_aWriteData + m_iWriteIdx - len);
     return true;
 }
 
@@ -632,24 +638,24 @@ bool CHttp::AddContent(const char* _content) {
 }
 
 bool CHttp::ParseWrite(HttpRequestDecodeState _status) {
-    // ´¦ÀíÍæ¼ÒÇëÇóµÄÊı¾İ£¬·ÖÎöÇëÇóµÄ½á¹ûÊÇ·ñÕıÈ·£¬
-    // ÏÈ·µ»ØÄ¬ÈÏµÄÒ³Ãæ
+    // å¤„ç†ç©å®¶è¯·æ±‚çš„æ•°æ®ï¼Œåˆ†æè¯·æ±‚çš„ç»“æœæ˜¯å¦æ­£ç¡®ï¼Œ
+    // å…ˆè¿”å›é»˜è®¤çš„é¡µé¢
     if (_status == HttpRequestDecodeState::INVALID_VERSION ||
         _status == HttpRequestDecodeState::INVALID ||
         _status == HttpRequestDecodeState::INVALID_HEADER ||
         _status == HttpRequestDecodeState::INVALID_METHOD ||
         _status == HttpRequestDecodeState::INVALID_URI) {
-        // httpÇëÇó³öÏÖÎÊÌâ
+        // httpè¯·æ±‚å‡ºç°é—®é¢˜
         AddStatusLine(400, error_400_title);
         AddHeaders(strlen(error_400_form));
         return AddContent(error_400_form);
     }
     else if (_status == HttpRequestDecodeState::COMPLETE) {
-        // ½âÎöÍê³É
+        // è§£æå®Œæˆ
         
-        // ÏÈ·µ»ØÄ¬ÈÏÒ³Ãæ,ÕâĞ©ÅĞ¶ÏºóĞø»áÓÃµ½
+        // å…ˆè¿”å›é»˜è®¤é¡µé¢,è¿™äº›åˆ¤æ–­åç»­ä¼šç”¨åˆ°
         if (stat(m_aFile, &m_sFileStat) < 0) {
-            LOG_ERROR("»ñÈ¡Ä¬ÈÏÒ³ÃæÎÄ¼şÊôĞÔÊ§°Ü");
+            LOG_ERROR("Get default file status failed");
             AddStatusLine(404, error_404_title);
             AddHeaders(strlen(error_404_form));
             return AddContent(error_404_form);
@@ -659,13 +665,13 @@ bool CHttp::ParseWrite(HttpRequestDecodeState _status) {
             AddHeaders(strlen(error_403_form));
             return AddContent(error_403_form);
         }
-        // ÅĞ¶ÏÇëÇóµÄÎÄ¼şÊÇ²»ÊÇÄ¿Â¼
+        // åˆ¤æ–­è¯·æ±‚çš„æ–‡ä»¶æ˜¯ä¸æ˜¯ç›®å½•
         if (S_ISDIR(m_sFileStat.st_mode)) {
             AddStatusLine(404, error_404_title);
             AddHeaders(strlen(error_404_form));
             return AddContent(error_404_form);
         }
-        // ÇëÇóµÄÎÄ¼şÃ»ÓĞÎÊÌâ£¬½«ÎÄ¼şÓ³Éäµ½»º³åÇøÖĞ
+        // è¯·æ±‚çš„æ–‡ä»¶æ²¡æœ‰é—®é¢˜ï¼Œå°†æ–‡ä»¶æ˜ å°„åˆ°ç¼“å†²åŒºä¸­
         int fd = open(m_aFile, O_RDONLY);
         m_pFileAddr = (char*)mmap(0, m_sFileStat.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
         close(fd);
@@ -686,21 +692,21 @@ bool CHttp::ParseWrite(HttpRequestDecodeState _status) {
     }
 }
 
-// Ìá¹©¸øÏß³Ì³ØµÄ½Ó¿Ú
+// æä¾›ç»™çº¿ç¨‹æ± çš„æ¥å£
 void CHttp::HttpParse() {
     HttpRequestDecodeState status = ParseRead();
-    LOG_INFO("HttpParse ret is : %d", (int)status);
+    LOG_TRACE("HttpParse ret is : %d", (int)status);
     if (status == HttpRequestDecodeState::OPEN) {
-        // µ±»¹Ã»ÓĞ½ÓÊÕÍêÊı¾İÊ±£¬ĞèÒªÖØĞÂ¼àÌı
+        // å½“è¿˜æ²¡æœ‰æ¥æ”¶å®Œæ•°æ®æ—¶ï¼Œéœ€è¦é‡æ–°ç›‘å¬
         ModFd(m_iEpollFd, m_iSockFd, EPOLLIN, m_iTriggerMode);
         return;
     }
     bool ret = ParseWrite(status);
     if (!ret) {
-        // ËµÃ÷ÇëÇóÖĞ³ıÁËÎÊÌâ£¬¹Ø±ÕÁ¬½Ó
+        // è¯´æ˜è¯·æ±‚ä¸­é™¤äº†é—®é¢˜ï¼Œå…³é—­è¿æ¥
         CloseHttp();
         return;
     }
-    // Ã»ÓĞÎÊÌâ¾Í¸Ä±äm_iSockFdµÄ¼àÌıÊÂ¼ş
+    // æ²¡æœ‰é—®é¢˜å°±æ”¹å˜m_iSockFdçš„ç›‘å¬äº‹ä»¶
     ModFd(m_iEpollFd, m_iSockFd, EPOLLOUT, m_iTriggerMode);
 }

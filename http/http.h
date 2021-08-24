@@ -17,56 +17,56 @@
 #define DEBUG_T
 
 typedef struct {
-	char* m_pBegin = nullptr;	//×Ö·û´®¿ªÊ¼Î»ÖÃ
-	char* m_pEnd = nullptr;		//×Ö·û´®½áÊøÎ»ÖÃ
+	char* m_pBegin = nullptr;	//å­—ç¬¦ä¸²å¼€å§‹ä½ç½®
+	char* m_pEnd = nullptr;		//å­—ç¬¦ä¸²ç»“æŸä½ç½®
 	operator std::string() const {
 		return std::string(m_pBegin, m_pEnd);
 	}
 }StringBuffer;
 
 enum class HttpRequestDecodeState {
-    INVALID,//ÎŞĞ§
-    INVALID_METHOD,//ÎŞĞ§ÇëÇó·½·¨
-    INVALID_URI,//ÎŞĞ§µÄÇëÇóÂ·¾¶
-    INVALID_VERSION,//ÎŞĞ§µÄĞ­Òé°æ±¾ºÅ
-    INVALID_HEADER,//ÎŞĞ§ÇëÇóÍ·
+    INVALID,//æ— æ•ˆ
+    INVALID_METHOD,//æ— æ•ˆè¯·æ±‚æ–¹æ³•
+    INVALID_URI,//æ— æ•ˆçš„è¯·æ±‚è·¯å¾„
+    INVALID_VERSION,//æ— æ•ˆçš„åè®®ç‰ˆæœ¬å·
+    INVALID_HEADER,//æ— æ•ˆè¯·æ±‚å¤´
 
 
-    START,//ÇëÇóĞĞ¿ªÊ¼
-    METHOD,//ÇëÇó·½·¨
+    START,//è¯·æ±‚è¡Œå¼€å§‹
+    METHOD,//è¯·æ±‚æ–¹æ³•
 
-    BEFORE_URI,//ÇëÇóÁ¬½ÓÇ°µÄ×´Ì¬£¬ĞèÒª'/'¿ªÍ·
-    IN_URI,//url´¦Àí
-    BEFORE_URI_PARAM_KEY,//URLÇëÇó²ÎÊı¼üÖ®Ç°
-    URI_PARAM_KEY,//URLÇëÇó²ÎÊı¼ü
-    BEFORE_URI_PARAM_VALUE,//URLµÄ²ÎÊıÖµÖ®Ç°
-    URI_PARAM_VALUE,//URLÇëÇó²ÎÊıÖµ
+    BEFORE_URI,//è¯·æ±‚è¿æ¥å‰çš„çŠ¶æ€ï¼Œéœ€è¦'/'å¼€å¤´
+    IN_URI,//urlå¤„ç†
+    BEFORE_URI_PARAM_KEY,//URLè¯·æ±‚å‚æ•°é”®ä¹‹å‰
+    URI_PARAM_KEY,//URLè¯·æ±‚å‚æ•°é”®
+    BEFORE_URI_PARAM_VALUE,//URLçš„å‚æ•°å€¼ä¹‹å‰
+    URI_PARAM_VALUE,//URLè¯·æ±‚å‚æ•°å€¼
 
-    BEFORE_PROTOCOL,//Ğ­Òé½âÎöÖ®Ç°
-    PROTOCOL,//Ğ­Òé
+    BEFORE_PROTOCOL,//åè®®è§£æä¹‹å‰
+    PROTOCOL,//åè®®
 
-    BEFORE_VERSION,//°æ±¾¿ªÊ¼Ç°
-    VERSION_SPLIT,//°æ±¾·Ö¸ô·û '.'
-    VERSION,//°æ±¾
+    BEFORE_VERSION,//ç‰ˆæœ¬å¼€å§‹å‰
+    VERSION_SPLIT,//ç‰ˆæœ¬åˆ†éš”ç¬¦ '.'
+    VERSION,//ç‰ˆæœ¬
 
     HEADER_KEY,
 
-    HEADER_BEFORE_COLON,//Ã°ºÅÖ®Ç°
-    HEADER_AFTER_COLON,//Ã°ºÅ
-    HEADER_VALUE,//Öµ
+    HEADER_BEFORE_COLON,//å†’å·ä¹‹å‰
+    HEADER_AFTER_COLON,//å†’å·
+    HEADER_VALUE,//å€¼
 
-    WHEN_CR,//Óöµ½Ò»¸ö»Ø³µÖ®ºó
+    WHEN_CR,//é‡åˆ°ä¸€ä¸ªå›è½¦ä¹‹å
 
-    CR_LF,//»Ø³µ»»ĞĞ
+    CR_LF,//å›è½¦æ¢è¡Œ
 
-    CR_LF_CR,//»Ø³µ»»ĞĞÖ®ºóµÄ×´Ì¬
+    CR_LF_CR,//å›è½¦æ¢è¡Œä¹‹åçš„çŠ¶æ€
 
 
-    BODY,//ÇëÇóÌå
+    BODY,//è¯·æ±‚ä½“
 
-    COMPLETE,//Íê³É
+    COMPLETE,//å®Œæˆ
 
-    OPEN,// Êı¾İÎ´½ÓÊÕÍêÈ«
+    OPEN,// æ•°æ®æœªæ¥æ”¶å®Œå…¨
 };
 
 
@@ -83,16 +83,16 @@ struct SHttpRequest {
     int GetLen();
     void Init();
 private:
-    std::string m_strMethod;//ÇëÇó·½·¨
-    std::string m_strUrl;//ÇëÇóÂ·¾¶[²»°üº¬ÇëÇó²ÎÊı]
-    std::map<std::string, std::string> m_mRequestParams;//ÇëÇó²ÎÊı
-    std::string m_strProtocol;//Ğ­Òé
-    std::string m_strVersion;//°æ±¾
-    std::map<std::string, std::string> m_mHeaders;//ËùÓĞµÄÇëÇóÍ·
-    std::string m_strBody;//ÇëÇóÌå
-    int m_iNextPos = 0;//ÏÂÒ»¸öÎ»ÖÃµÄ
-    bool m_bIsOpen = false; // µ±Ç°½âÎöhttpÇëÇóÊÇ·ñÎ´½ÓÊÕÍêÈ«
-    HttpRequestDecodeState m_eDecodeState = HttpRequestDecodeState::START;//½âÎö×´Ì¬
+    std::string m_strMethod;//è¯·æ±‚æ–¹æ³•
+    std::string m_strUrl;//è¯·æ±‚è·¯å¾„[ä¸åŒ…å«è¯·æ±‚å‚æ•°]
+    std::map<std::string, std::string> m_mRequestParams;//è¯·æ±‚å‚æ•°
+    std::string m_strProtocol;//åè®®
+    std::string m_strVersion;//ç‰ˆæœ¬
+    std::map<std::string, std::string> m_mHeaders;//æ‰€æœ‰çš„è¯·æ±‚å¤´
+    std::string m_strBody;//è¯·æ±‚ä½“
+    int m_iNextPos = 0;//ä¸‹ä¸€ä¸ªä½ç½®çš„
+    bool m_bIsOpen = false; // å½“å‰è§£æhttpè¯·æ±‚æ˜¯å¦æœªæ¥æ”¶å®Œå…¨
+    HttpRequestDecodeState m_eDecodeState = HttpRequestDecodeState::START;//è§£æçŠ¶æ€
 };
 
 
@@ -102,22 +102,22 @@ public:
     CHttp() {}
     ~CHttp() {};
 
-	bool Read();			    // loopÖĞ¶ÁÈ¡Ò»´Î£¬¸ù¾İleºÍet»áÓĞ²»Í¬µÄÊµÏÖ
-	bool Write();			    // loopÖĞµ±ÊÕµ½EPOLLOUTÊ±µ÷ÓÃ´Ëº¯Êı½«´¦ÀíºóµÄÄÚÈİĞ´Èësock
-    HttpRequestDecodeState ParseRead();		            // ¶ÔÓÚÊÕµ½µÄÊı¾İ£¬½âÎö³öÏàÓ¦µÄÊı¾İ
-	bool ParseWrite(HttpRequestDecodeState);		    // ¸ù¾İ½âÎö³öµÄÊı¾İ£¬¹¹½¨»ØËÍÇëÇó
-	void HttpParse();			                        // Ïß³Ì³ØÖĞĞèÒªµ÷ÓÃµÄº¯Êı£¬²»¶Ï·ÖÎöµ±Ç°ËùÊÕµ½µÄÊı¾İ
+	bool Read();			    // loopä¸­è¯»å–ä¸€æ¬¡ï¼Œæ ¹æ®leå’Œetä¼šæœ‰ä¸åŒçš„å®ç°
+	bool Write();			    // loopä¸­å½“æ”¶åˆ°EPOLLOUTæ—¶è°ƒç”¨æ­¤å‡½æ•°å°†å¤„ç†åçš„å†…å®¹å†™å…¥sock
+    HttpRequestDecodeState ParseRead();		            // å¯¹äºæ”¶åˆ°çš„æ•°æ®ï¼Œè§£æå‡ºç›¸åº”çš„æ•°æ®
+	bool ParseWrite(HttpRequestDecodeState);		    // æ ¹æ®è§£æå‡ºçš„æ•°æ®ï¼Œæ„å»ºå›é€è¯·æ±‚
+	void HttpParse();			                        // çº¿ç¨‹æ± ä¸­éœ€è¦è°ƒç”¨çš„å‡½æ•°ï¼Œä¸æ–­åˆ†æå½“å‰æ‰€æ”¶åˆ°çš„æ•°æ®
     void Init(int _sockfd, const sockaddr_in &_addr, int _triggerMode);
-    void CloseHttp();           // ¹Ø±ÕÁ¬½Ó
-    bool AddLine(const char* _format, ...);             // Ïò¶Á»º³åÇøÖĞÌí¼ÓÒ»ĞĞÄÚÈİ
-    bool AddStatusLine(int _status, const char* _title);// Ìí¼Ó×´Ì¬ĞĞ
-    bool AddHeaders(int _contentlen);                   // Ìí¼Óheader
-    bool AddContentLength(int _contentlen);             // Ìí¼ÓContent-Length
-    bool AddContentType();                              // Ìí¼ÓÄÚÈİĞÎÊ½
-    bool AddLinger();                                   // Ìí¼ÓÁ¬½Ó·½Ê½
-    bool AddBlankLine();                                // Ìí¼Ó¿ÕĞĞ
-    bool AddContent(const char* _content);              // Ìí¼ÓÄÚÈİ
-    void unmmap();                                      // ÒòÎªÊ¹ÓÃÁËÎÄ¼şÓ³Éä£¬µ±´«ËÍÍêºóĞèÒª½â³ıÓ³Éä
+    void CloseHttp();           // å…³é—­è¿æ¥
+    bool AddLine(const char* _format, ...);             // å‘è¯»ç¼“å†²åŒºä¸­æ·»åŠ ä¸€è¡Œå†…å®¹
+    bool AddStatusLine(int _status, const char* _title);// æ·»åŠ çŠ¶æ€è¡Œ
+    bool AddHeaders(int _contentlen);                   // æ·»åŠ header
+    bool AddContentLength(int _contentlen);             // æ·»åŠ Content-Length
+    bool AddContentType();                              // æ·»åŠ å†…å®¹å½¢å¼
+    bool AddLinger();                                   // æ·»åŠ è¿æ¥æ–¹å¼
+    bool AddBlankLine();                                // æ·»åŠ ç©ºè¡Œ
+    bool AddContent(const char* _content);              // æ·»åŠ å†…å®¹
+    void unmmap();                                      // å› ä¸ºä½¿ç”¨äº†æ–‡ä»¶æ˜ å°„ï¼Œå½“ä¼ é€å®Œåéœ€è¦è§£é™¤æ˜ å°„
     sockaddr_in *GetAddress() {
         return &m_sAddr;
     }
@@ -137,29 +137,29 @@ public:
 
         for (auto x : m_sHttpParse.GetRequestParams())
             LOG_INFO("%s:%s", x.first.c_str(), x.second.c_str());
-        LOG_INFO("×´Ì¬»úÄ¿Ç°×´Ì¬Îª£º%d", m_sHttpParse.GetStatus());
+        LOG_INFO("çŠ¶æ€æœºç›®å‰çŠ¶æ€ä¸ºï¼š%d", m_sHttpParse.GetStatus());
     }
 #endif // DEBUG
 public:
 	static int m_iEpollFd;
-	static int m_iHttpCnt;		// ËùÓĞÁ¬½ÓÊı
-    static char m_aFilePathPrefix[100];   // ÇëÇóÎÊ¼ÛÂ·¾¶Ç°×º
+	static int m_iHttpCnt;		// æ‰€æœ‰è¿æ¥æ•°
+    static char m_aFilePathPrefix[100];   // è¯·æ±‚é—®ä»·è·¯å¾„å‰ç¼€
 private:
-	int m_iSockFd;		// http°ó¶¨µÄsock
-	sockaddr_in m_sAddr;// ¼ÇÂ¼Á¬½ÓµÄµØÖ·¶Ë¿Ú
-	char m_aReadData[MAX_READ_DATA_BUFF_SIZE];	    // ¶ÁµÄÊı¾İ
-    char m_aWriteData[MAX_WRITE_DATA_BUFF_SIZE];    // Ğ´Êı¾İ
-    char *m_pFileAddr;          // ÎÄ¼şÓ³ÉäÊ±µÄÆğÊ¼µØÖ·
-    int m_iDataLen;             // ËùÓĞ´ı·¢ËÍÊı¾İµÄ³¤¶È
-    int m_iDataSendLen;         // ÒÑ·¢ËÍÊı¾İµÄ³¤¶È
-    int m_iTriggerMode;         // ´¥·¢Ä£Ê½ 0 LT 1 ET
-    int m_iReadIdx;             // ¶Á»º³åÇøÖĞµ±Ç°¶ÁÈ¡ÄÚÈİÎ»ÖÃ
-    int m_iWriteIdx;            // Ğ´»º³åÇøÖĞµ±Ç°Î»ÖÃ
+	int m_iSockFd;		// httpç»‘å®šçš„sock
+	sockaddr_in m_sAddr;// è®°å½•è¿æ¥çš„åœ°å€ç«¯å£
+	char m_aReadData[MAX_READ_DATA_BUFF_SIZE];	    // è¯»çš„æ•°æ®
+    char m_aWriteData[MAX_WRITE_DATA_BUFF_SIZE];    // å†™æ•°æ®
+    char *m_pFileAddr;          // æ–‡ä»¶æ˜ å°„æ—¶çš„èµ·å§‹åœ°å€
+    int m_iDataLen;             // æ‰€æœ‰å¾…å‘é€æ•°æ®çš„é•¿åº¦
+    int m_iDataSendLen;         // å·²å‘é€æ•°æ®çš„é•¿åº¦
+    int m_iTriggerMode;         // è§¦å‘æ¨¡å¼ 0 LT 1 ET
+    int m_iReadIdx;             // è¯»ç¼“å†²åŒºä¸­å½“å‰è¯»å–å†…å®¹ä½ç½®
+    int m_iWriteIdx;            // å†™ç¼“å†²åŒºä¸­å½“å‰ä½ç½®
     SHttpRequest m_sHttpParse;
-    struct stat m_sFileStat;    // ÎÄ¼ş
+    struct stat m_sFileStat;    // æ–‡ä»¶
     struct iovec m_sIv[2];
     int m_iIvCount;
-    bool m_bLinger;             // Á¬½Ó·½Ê½
+    bool m_bLinger;             // è¿æ¥æ–¹å¼
     char m_aFile[MAX_FILENAME_LEN] = {"./1.html"};
 };
 #endif

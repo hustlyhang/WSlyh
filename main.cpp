@@ -9,7 +9,6 @@
 #include <cassert>
 #include <sys/epoll.h>
 #include <signal.h>
-
 #include "./lock/locker.h"
 #include "./http/http.h"
 #include "./http/timer.h"
@@ -59,7 +58,7 @@ void TimerHandler() {
 }
 
 void CallBackFunc(SClientData *_userData) {
-    LOG_INFO("CallBackFunc");
+    LOG_TRACE("CallBackFunc");
     epoll_ctl(epollFd, EPOLL_CTL_DEL, _userData->sock_fd, 0);
     assert(_userData);
     // 只要关闭相关的文件描述符，chttp类可以复用
@@ -75,8 +74,8 @@ void SendInfo(int _conn, const char* _info) {
 
 int main(int argc, char* argv[]) {
     // 初始化日志
-    LOG_INIT("./ServerLog", "WebServer", (int)LOG_LEVEL::TRACE); 
-    LOG_INFO("Begin!!!!!!!");
+    LOG_INIT("./ServerLog", "WebServer", (int)LOG_LEVEL::INFO); 
+    LOG_TRACE("Begin");
     if (argc <= 1) {
         printf("usage: %s ip_address port_number\n", basename(argv[0]));
         return 1;
@@ -142,10 +141,10 @@ int main(int argc, char* argv[]) {
     alarm(TIMESLOT);
 
     while (!stop_server) {
-        LOG_INFO("eventloop!!!!!!!");
-        LOG_INFO("begin epoll_wait");
+        LOG_TRACE("eventloop");
+        LOG_TRACE("begin epoll_wait");
         int number = epoll_wait(epollFd, events, MAX_EVENT_NUMBER, -1);
-        LOG_INFO("end epoll_wait");
+        LOG_TRACE("end epoll_wait");
         if (number < 0 && errno != EINTR) {
             LOG_ERROR("epoll wait failed!!!");
             break;
@@ -157,11 +156,11 @@ int main(int argc, char* argv[]) {
             LOG_INFO("epoll_wait sockfd : %d", sockfd);
             if (sockfd == listenFd) {
                 // 新到的客户连接
-                LOG_INFO("new socket come");
+                LOG_TRACE("new socket come");
                 struct sockaddr_in client_address;
                 socklen_t client_addrlength = sizeof(client_address);
 #ifdef listenfdLT
-                LOG_INFO("listenFd in Lt model");
+                LOG_TRACE("listenFd in Lt model");
                 int connfd = accept(listenFd, (struct sockaddr *)&client_address, &client_addrlength);
                 LOG_INFO("Add sockfd : %d", connfd);
                 if (connfd < 0) {
@@ -186,7 +185,7 @@ int main(int argc, char* argv[]) {
 #endif
 
 #ifdef listenfdET
-                LOG_INFO("listenFd in ET model");
+                LOG_TRACE("listenFd in ET model");
                 while (true) {
                     int connfd = accept(listenFd, (struct sockaddr *)&client_address, &client_addrlength);
                     if (connfd < 0) {
@@ -213,7 +212,7 @@ int main(int argc, char* argv[]) {
 #endif          
             }
             else if (events[i].events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)) {
-                LOG_INFO("somethin wrong happen");
+                LOG_ERROR("somethin wrong happen");
                 CHeapTimer* tempTimer = clientDatas[sockfd].timer;
                 tempTimer->callback_func(&clientDatas[sockfd]);
                 if (tempTimer)
@@ -250,13 +249,13 @@ int main(int argc, char* argv[]) {
             }
             else if (events[i].events & EPOLLIN) {
                 // socket上有数据可以读取了，调用chttp类的Read
-                LOG_INFO("data coming EPOLLIN");
+                LOG_TRACE("data coming EPOLLIN");
                 CHeapTimer* tempTimer = clientDatas[sockfd].timer;
                 if (https[sockfd].Read()) {
-                    LOG_INFO("Read client addr : %s", inet_ntoa(https[sockfd].GetAddress()->sin_addr));
+                    LOG_TRACE("Read client addr : %s", inet_ntoa(https[sockfd].GetAddress()->sin_addr));
                     pool->Append(https + sockfd);
                     if (tempTimer) {
-                        LOG_INFO("adjust timer once");
+                        LOG_TRACE("adjust timer once");
                         time_t cur = time(NULL);
                         tempTimer->m_iExpireTime = cur + 3 * TIMESLOT;
                         cTimerHeap.Adjust(tempTimer);
@@ -270,14 +269,13 @@ int main(int argc, char* argv[]) {
                 }
             }
             else if (events[i].events & EPOLLOUT) {
-                LOG_INFO("data can write EPOLLOUT");
+                LOG_TRACE("data can write EPOLLOUT");
                 // socket上可以写数据了，调用chttp类的Write
                 CHeapTimer* tempTimer = clientDatas[sockfd].timer;
                 if (https[sockfd].Write()) {
-                    LOG_INFO("Write client addr : %s", inet_ntoa(https[sockfd].GetAddress()->sin_addr));
-
+                    LOG_TRACE("Write client addr : %s", inet_ntoa(https[sockfd].GetAddress()->sin_addr));
                     if (tempTimer) {
-                        LOG_INFO("adjust timer once");
+                        LOG_TRACE("adjust timer once");
                         time_t cur = time(NULL);
                         tempTimer->m_iExpireTime = cur + 3 * TIMESLOT;
                         cTimerHeap.Adjust(tempTimer);

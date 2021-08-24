@@ -1,5 +1,5 @@
 #if 1
-// �ڳ����˳��󣬽��ڴ��е���־������
+// 在程序退出后，将内存中的日志读出来
 #include <limits.h>     // realpath
 #include <stdlib.h>
 #include <stdio.h>

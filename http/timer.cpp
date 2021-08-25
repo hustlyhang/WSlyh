@@ -97,9 +97,10 @@ void CTimerHeap::Tick() {
 }
 
 void CTimerHeap::Resize() {
+    LOG_INFO("resize");
     CHeapTimer** tmp = new CHeapTimer*[m_iCapacity * 2]();
     if(!tmp) throw std::exception();
-    memcpy(tmp, m_aTimers, m_iCurNum);
+    memcpy(tmp, m_aTimers, m_iCurNum * sizeof(CHeapTimer*));
     m_iCapacity *= 2;
     delete[] m_aTimers;
     m_aTimers = tmp;

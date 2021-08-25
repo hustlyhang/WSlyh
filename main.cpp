@@ -73,13 +73,14 @@ void SendInfo(int _conn, const char* _info) {
 }
 
 int main(int argc, char* argv[]) {
-    // 初始化日志
-    LOG_INIT("./ServerLog", "WebServer", (int)LOG_LEVEL::INFO); 
     LOG_TRACE("Begin");
     if (argc <= 1) {
         printf("usage: %s ip_address port_number\n", basename(argv[0]));
         return 1;
     }
+    int level = atoi(argv[2]);
+    // 初始化日志
+    LOG_INIT("./ServerLog", "WebServer", level); 
     int port = atoi(argv[1]);
     LOG_INFO("port is : %d", port);
     AddSig(SIGPIPE, SIG_IGN);

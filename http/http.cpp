@@ -449,7 +449,7 @@ void CHttp::Init(int _sockfd, const sockaddr_in& _addr, int _triggerMode) {
 
     memset(m_aReadData, '\0', MAX_READ_DATA_BUFF_SIZE);
     memset(m_aWriteData, '\0', MAX_WRITE_DATA_BUFF_SIZE);
-    m_bLinger = true;
+    m_bLinger = false;
     m_sHttpParse.Init();
 }
 

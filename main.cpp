@@ -73,7 +73,6 @@ void SendInfo(int _conn, const char* _info) {
 }
 
 int main(int argc, char* argv[]) {
-    LOG_TRACE("Begin");
     if (argc <= 1) {
         printf("usage: %s ip_address port_number\n", basename(argv[0]));
         return 1;

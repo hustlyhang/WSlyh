@@ -111,6 +111,13 @@
 
     第三个参数，buf是一个结构指针，它指向共享内存模式和访问权限的结构。
 
+
+- [strftime](https://www.runoob.com/cprogramming/c-function-strftime.html)
+  - ```C++
+    size_t strftime(char *str, size_t maxsize, const char *format, const struct tm *timeptr)
+    ```
+    根据 format 中定义的格式化规则，格式化结构 timeptr 表示的时间，并把它存储在 str 中。
+
 **优化：**  
 ----------------------------------
 - 每次记录日志都会去获取时间，当线程数量很多的时候，这会影响到性能，想想怎么优化
@@ -125,4 +132,4 @@
 - 测试时发现在主循环中调用chttp的write函数时，有错误。但是根据日志不知道具体位置，然后想根据coredump文件来查找问题
   但是wsl生成coredump文件较难，参考资料较少。就利用虚拟机来测试，[link](https://blog.csdn.net/qq_15328161/article/details/109085705)
   问题出在修改timer时间的时候先删除timer后面再addtimer，删除的时候删除了回调指针，所以后面回调的时候会报错
-- 第一次连接可以成功，而且在超时时间内，也可以发起请求，但是当关闭socket后，就无法再次建立连接了
+- 第一次连接可以成功，而且在超时时间内，也可以发起请求，但是当关闭socket后，就无法再次建立连接了。。。。

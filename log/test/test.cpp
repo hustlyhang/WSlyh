@@ -7,12 +7,18 @@
 #include <sys/time.h>
 #include <fstream>
 #include <pthread.h>
+#include <math.h>
+#include <cstdio>
+
+#define PATH "./PipeLog.log"
+#define PATH1 "./PipeLog"
 
 const long long cnt = 1e7;
-const long long mcnt = 1e6;
+const long long mcnt = 5e6;
 std::string fflog("test test test test test test test test test test test test test test test test test test test test.");
 constexpr int N = 4;
 std::ofstream ofs;
+
 
 CLocker lock;
 
@@ -22,17 +28,20 @@ int64_t get_current_millis(void) {
     return (int64_t)tv.tv_sec * 1000 + tv.tv_usec / 1000;
 }
 
-void OneThreadAsyn(long long cnt) {
-    LOG_INIT("./PipeLog.log", "test", 3);
+double OneThreadAsyn(long long cnt) {
+    LOG_INIT(PATH1, "test", 3);
     uint64_t start_ts = get_current_millis();
     for (int i = 0;i < cnt; ++i) {
         LOG_ERROR("test test test test test test test test test test test test test test test test test test test test.");
     }
     uint64_t end_ts = get_current_millis();
-    printf("Asyn time use %lums\n", end_ts - start_ts);
-    printf("Write log per second %lu MB\n", (cnt * fflog.size() / 2^10) /(end_ts - start_ts));
+    double ts = (end_ts - start_ts) / 1000.0;
+    double qfs = cnt / ts;
+    printf("Asyn time use %0.3f s\n", ts);
+    printf("Write log per second %0.3f \n", qfs);
+    return qfs;
 }
-void OneThreadSyn(long long cnt) {
+double OneThreadSyn(long long cnt) {
     uint64_t start_ts = get_current_millis();
     for (int i = 0; i < cnt; ++i) {
         time_t t = time(0);
@@ -42,8 +51,11 @@ void OneThreadSyn(long long cnt) {
         ofs << "test test test test test test test test test test test test test test test test test test test test." <<std::endl; 
     }
     uint64_t end_ts = get_current_millis();
-    printf("Syn time use %lums\n", end_ts - start_ts);
-    printf("Write log per second %lu MB\n", (cnt * fflog.size() / 2^10) /(end_ts - start_ts));
+    double ts = (end_ts - start_ts) / 1000.0;
+    double qfs = cnt / ts;
+    printf("Syn time use %0.3f s\n", ts);
+    printf("Write log per second %0.3f \n", qfs);
+    return qfs;
 }
 
 void* thdoasyn(void* args)
@@ -66,8 +78,8 @@ void* thdosyn(void* args)
     }
 }
 
-void MulThreadAsyn() {
-    LOG_INIT("./PipeLog.log", "test", 3);
+double MulThreadAsyn() {
+    LOG_INIT(PATH1, "test", 3);
     uint64_t start_ts = get_current_millis();
     pthread_t tids[N];
     for (int i = 0;i < N; ++i) {
@@ -75,11 +87,14 @@ void MulThreadAsyn() {
         pthread_join(tids[i], NULL);
     }
     uint64_t end_ts = get_current_millis();
-    printf("MultiAsyn time use %lums\n", end_ts - start_ts);
-    printf("Write log per second %lu MB\n", (cnt * fflog.size() / 2^10) /(end_ts - start_ts));
+    double ts = (end_ts - start_ts) / 1000.0;
+    double qfs = cnt / ts;
+    printf("MultiAsyn time use %0.3f s\n", ts);
+    printf("Write log per second %0.3f\n", qfs);
+    return qfs;
 }
 
-void MulThreadSyn() {
+double MulThreadSyn() {
     
     uint64_t start_ts = get_current_millis();
     pthread_t tids[N];
@@ -88,12 +103,17 @@ void MulThreadSyn() {
         pthread_join(tids[i], NULL);
     }
     uint64_t end_ts = get_current_millis();
-    printf("MultiSyn time use %lums\n", end_ts - start_ts);
-    printf("Write log per second %lu MB\n", (cnt * fflog.size() / 2^10) /(end_ts - start_ts));
+    double ts = (end_ts - start_ts) / 1000.0;
+    double qfs = cnt / ts;
+    printf("MultiSyn time use %0.3f s\n", ts);
+    printf("Write log per second %0.3f\n", qfs);
+    return qfs;
 }
 
+
+
 int main(int argc, char** argv) {
-    ofs.open("./PipeLog.log", std::ofstream::app); 
+    ofs.open(PATH, std::ofstream::app); 
     //printf("Write %ld records, per record %d KB.\n", cnt, fflog.size());
     //OneThreadSyn(cnt);
     //OneThreadAsyn(cnt);

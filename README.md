@@ -46,15 +46,16 @@
 
 
 - **压力测试**
-    - todo
+    - ![pic](https://github.com/hustlyhang/WSlyh/blob/master/src/webbenchtest.png)
 
 - 遇到的一些问题  
-    - todo
+    - [problem](https://github.com/hustlyhang/WSlyh/blob/master/src/PROBLEM.md)
 
 - 项目框架
     - todo
 
 - TODO
+    - 日志系统捕获结束信号，内存中剩余的日志写完
     - 加入kv存储引擎，实现用户注册功能
     - 优化代码结构
     - 定时器类中需要定时删除已经被标记删除的节点，长时间运行会导致内存消耗过高

@@ -1,13 +1,55 @@
 # WSlyh
-linux多线程服务器
+- **主要功能**
+    - 使用 线程池 + 非阻塞socket + epoll(ET模式) + 事件处理(Reactor) 的并发模型
+    - 实现基于小根堆的计时器，可以高效剔除长时间非活跃连接
+    - 异步日志系统，采用循环双向链表结构，便于扩展同时提高写入量
+    - 利用有限状态机处理http请求，解析数据
+    - 使用Webbench测试，可以实现上万的并发连接
 
-- 封装了信号量，互斥锁以及条件变量
-- 实现线程池
-- 实现基于小根堆的计时器
-- 环形日志，便于扩展同时提高写入量
-- 实现了et和lt两种模式
-- 利用有限状态机处理http请求，解析数据
+- **文件目录**
+    - ./http ：http连接处理类；基于小根堆的定时器类实现；
+    - ./lock ： 封装了互斥锁、型号量、条件变量；
+    - ./log ： 异步日志系统，其中./log/shmtool.cpp 文件是为了获取程序异常退出时剩余未写入日志文件的日志记录；异步日志和同步日志的测试在./log/test文件中；
+    - ./threadpool：线程池
+    - ./unit_test：单元测试
+    - ./src：资源文件
 
-problem
---------------------------------
-- 今天遇到用vscode连接本地子系统，但却无法编辑，后面发现是因为用户组没有权限，根据这篇帖子解决了[link](https://blog.csdn.net/weixin_42842069/article/details/113743339)
+
+- **快速运行**
+    - 服务器测试环境  
+        - Ubuntu版本20.04
+    - 浏览器
+        - Windows、Linux均可
+        - Chrome
+        - FireFox
+        - todo...
+    - 在当前目录下
+        ```C++;
+        make;
+        ./server 9999 3
+        ```
+        其中9999是端口号，3是日志等级
+
+        程序异常崩溃后，刷出共享内存中的日志：
+        切到./log目录下
+        ```C++
+        make;
+        ./Mtool -f ../server -d
+        ```
+        -f 后面跟运行的软件路径，-d为是否读取后删除
+
+
+- **模块介绍**
+    - [http处理](https://github.com/hustlyhang/WSlyh/blob/master/http/README.md)
+    - [小根堆定时器](https://github.com/hustlyhang/WSlyh/blob/master/http/README.md)
+    - [异步日志系统](https://github.com/hustlyhang/WSlyh/blob/master/log/README.md)
+
+
+- **压力测试**
+    - todo
+
+- 遇到的一些问题  
+    - todo
+
+- 项目框架
+    - todo

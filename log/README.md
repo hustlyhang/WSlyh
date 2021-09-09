@@ -39,24 +39,24 @@
     2. 释放锁，如果有CellBuffer状态从```FREE```转为```FULL```，则通知条件变量cond，唤醒等待的消费者线程；
   - 图解
     1. 初始状态
-      ![pic]();
+      ![pic](https://github.com/hustlyhang/WSlyh/blob/master/src/logflow1.png);
     2. 生产者写满一个CellBuffer
-      ![pic]()
+      ![pic](https://github.com/hustlyhang/WSlyh/blob/master/src/logflow2.png)
     3. 消费者持久化完成，重置CellBuffer1，```m_pPrstBuf```前进一位，发现指向的CellBuffer2未满，等待
-      ![pic]()
+      ![pic](https://github.com/hustlyhang/WSlyh/blob/master/src/logflow3.png)
     4. 超过一秒后 CellBuffer2 虽有日志，但依然未满：消费者将此CellBuffer2标记为```FULL```强行持久化，并将```m_pCurBuf```前进一位到CellBuffer3
-      ![pic]()
+      ![pic](https://github.com/hustlyhang/WSlyh/blob/master/src/logflow4.png)
     5. 消费者在 CellBuffer2 的持久化上延迟过大，结果生产者都写满整个链表，已经正在写第二次 CellBuffer1 了
-      ![pic]()
+      ![pic](https://github.com/hustlyhang/WSlyh/blob/master/src/logflow5.png)
     6. 生产者写满写 CellBuffer1 ，发现下一位 CellBuffer2 是```FULL```，则拓展换冲区，新增NewCellBuffer
-      ![pic]()
+      ![pic](https://github.com/hustlyhang/WSlyh/blob/master/src/logflow6.png)
     
 - 测试
   1. 单线程写1千万条100KB记录对比：
-    - ![pic]()
+    - ![pic](https://github.com/hustlyhang/WSlyh/blob/master/src/onthreadtest.png)
     - 可以看出性能差距接近9倍
   2. 多线程每个线程写1百万条100KB记录对比：线程数4
-    - ![pic]()
+    - ![pic](https://github.com/hustlyhang/WSlyh/blob/master/src/multhreadtest.png)
     - 在多线程的情况异步日志系统为同步系统的7倍左右
 
 

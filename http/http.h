@@ -14,7 +14,9 @@
 #define MAX_WRITE_DATA_BUFF_SIZE 5 * 1024 // 5k
 #define MAX_FILENAME_LEN 1024
 
-#define DEBUG_T
+// #define DEBUG_T
+
+extern int pipeFd[2];
 
 typedef struct {
 	char* m_pBegin = nullptr;	//字符串开始位置
@@ -121,6 +123,10 @@ public:
     sockaddr_in *GetAddress() {
         return &m_sAddr;
     }
+    void SendErrSig() {
+        int ms = 100;
+        send(pipeFd[1], (char *)&ms, 1, 0);
+    }
 #ifdef DEBUG_T
     void Test(const char* _str, int _len) {
         m_sHttpParse.ParseInternal(_str, _len);
@@ -142,11 +148,15 @@ public:
 #endif // DEBUG
 public:
 	static int m_iEpollFd;
-	static int m_iHttpCnt;		// 所有连接数
-    static char m_aFilePathPrefix[100];   // 请求问价路径前缀
+	static int m_iHttpCnt;		                // 所有连接数
+    static char m_aFilePathPrefix[100];         // 请求问价路径前缀
+    // static int m_iPipFd;                        // 出错时向主进程发送信号的fd
+    int m_iState;                               // 记录当前连接的状态，1为读，2为写
+    
+
 private:
-	int m_iSockFd;		// http绑定的sock
-	sockaddr_in m_sAddr;// 记录连接的地址端口
+	int m_iSockFd;		                        // http绑定的sock
+	sockaddr_in m_sAddr;                            // 记录连接的地址端口
 	char m_aReadData[MAX_READ_DATA_BUFF_SIZE];	    // 读的数据
     char m_aWriteData[MAX_WRITE_DATA_BUFF_SIZE];    // 写数据
     char *m_pFileAddr;          // 文件映射时的起始地址

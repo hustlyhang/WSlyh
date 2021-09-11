@@ -432,6 +432,7 @@ void ModFd(int _epollFd, int _fd, int _event, int _triggerMode) {
 int CHttp::m_iEpollFd = -1;
 int CHttp::m_iHttpCnt = 0;
 char CHttp::m_aFilePathPrefix[100] = "";
+// int CHttp::m_iPipFd = pipeFd[1];
 
 void CHttp::Init(int _sockfd, const sockaddr_in& _addr, int _triggerMode) {
     m_iSockFd = _sockfd;
@@ -703,7 +704,7 @@ void CHttp::HttpParse() {
     }
     bool ret = ParseWrite(status);
     if (!ret) {
-        // 说明请求中除了问题，关闭连接
+        // 说明处理回送请求报文的时候出现了问题，关闭连接，错误是服务端出了问题
         CloseHttp();
         return;
     }

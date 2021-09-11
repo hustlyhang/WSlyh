@@ -1,0 +1,57 @@
+[INFO][2021-09-10 17:51:11.421][6317]main.cpp:150(main): epoll_wait number : 1
+[INFO][2021-09-10 17:51:11.421][6317]main.cpp:154(main): epoll_wait sockfd : 3
+[TRACE][2021-09-10 17:51:11.421][6317]main.cpp:157(main): new socket come
+[TRACE][2021-09-10 17:51:11.421][6317]main.cpp:161(main): listenFd in Lt model
+[INFO][2021-09-10 17:51:11.421][6317]main.cpp:163(main): Add sockfd : 8
+[TRACE][2021-09-10 17:51:11.421][6317]./http/http.cpp:398(AddFd): Add fd : 8
+[TRACE][2021-09-10 17:51:11.421][6317]./http/http.cpp:24(Init): SHttpRequest::Init
+[INFO][2021-09-10 17:51:11.421][6317]./http/timer.cpp:57(AddTimer): add timer
+[INFO][2021-09-10 17:51:11.421][6317]./http/timer.cpp:59(AddTimer): 1631321486, 0
+[INFO][2021-09-10 17:51:11.421][6317]main.cpp:271(main): End
+[TRACE][2021-09-10 17:51:11.421][6317]main.cpp:144(main): eventloop
+[INFO][2021-09-10 17:51:11.421][6317]main.cpp:150(main): epoll_wait number : 1
+[INFO][2021-09-10 17:51:11.421][6317]main.cpp:154(main): epoll_wait sockfd : 8
+[TRACE][2021-09-10 17:51:11.421][6317]main.cpp:258(main): data coming EPOLLIN
+[TRACE][2021-09-10 17:51:11.421][6317]./threadpool/threadpool.h:127(Append): Append task, Reactor
+[INFO][2021-09-10 17:51:11.421][6317]main.cpp:271(main): End
+[TRACE][2021-09-10 17:51:11.421][6317]main.cpp:144(main): eventloop
+[TRACE][2021-09-10 17:51:11.421][6319]./http/http.cpp:38(ParseInternal): ParseInternal
+[TRACE][2021-09-10 17:51:11.421][6319]./http/http.cpp:581(ParseRead): deal http request, now State machine is: 25, current content is :GET / HTTP/1.1
+Host: 127.0.0.1:9999
+User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:92.0) Gecko/20100101 Firefox/92.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Upgrade-Insecure-Requests: 1
+Sec-Fetch-Dest: document
+Sec-Fetch-Mode: navigate
+Sec-Fetch-Site: none
+Sec-Fetch-User: ?1
+Cache-Control: max-age=0
+
+
+[TRACE][2021-09-10 17:51:11.421][6319]./http/http.cpp:699(HttpParse): HttpParse ret is : 26
+[TRACE][2021-09-10 17:51:11.421][6319]./http/http.cpp:614(AddLine): add line:HTTP/1.1 200 OK
+
+[TRACE][2021-09-10 17:51:11.421][6319]./http/http.cpp:614(AddLine): add line:Content-Length:268
+
+[TRACE][2021-09-10 17:51:11.421][6319]./http/http.cpp:614(AddLine): add line:Connection:close
+
+[TRACE][2021-09-10 17:51:11.421][6319]./http/http.cpp:614(AddLine): add line:Content-Type:text/html
+
+[TRACE][2021-09-10 17:51:11.421][6319]./http/http.cpp:614(AddLine): add line:
+
+[INFO][2021-09-10 17:51:11.421][6319]./http/http.cpp:420(ModFd): ModFd fd : 8
+[INFO][2021-09-10 17:51:11.421][6317]main.cpp:150(main): epoll_wait number : 1
+[INFO][2021-09-10 17:51:11.421][6317]main.cpp:154(main): epoll_wait sockfd : 8
+[TRACE][2021-09-10 17:51:11.421][6317]main.cpp:262(main): data can write EPOLLOUT
+[TRACE][2021-09-10 17:51:11.421][6317]./threadpool/threadpool.h:127(Append): Append task, Reactor
+[INFO][2021-09-10 17:51:11.421][6317]main.cpp:271(main): End
+[TRACE][2021-09-10 17:51:11.421][6317]main.cpp:144(main): eventloop
+[TRACE][2021-09-10 17:51:11.421][6320]./http/http.cpp:532(Write): write : 349, m_sIv[0].iov_len : 81, m_sIv[1].iov_len : 268, m_iDataLen : 349, m_iWriteIdx : 81
+[TRACE][2021-09-10 17:51:11.421][6320]./http/http.cpp:467(unmmap): unmmap
+[INFO][2021-09-10 17:51:11.421][6320]./http/http.cpp:420(ModFd): ModFd fd : 8
+[WARN][2021-09-10 17:51:11.421][6320]./threadpool/threadpool.h:102(Work): http request write wrong!
+[INFO][2021-09-10 17:51:11.421][6317]main.cpp:150(main): epoll_wait number : 1
+[INFO][2021-09-10 17:51:11.421][6317]main.cpp:154(main): epoll_wait sockfd : 5

@@ -27,7 +27,7 @@ extern void ModFd(int _epollFd, int _fd, int _event, int _triggerMode);
 extern int SetNonBlocking(int _fd);
 
 // 通过管道来处理定时器信号
-static int pipeFd[2];
+int pipeFd[2];
 static CTimerHeap cTimerHeap(1000);
 static int epollFd = 0;
 
@@ -142,9 +142,7 @@ int main(int argc, char* argv[]) {
 
     while (!stop_server) {
         LOG_TRACE("eventloop");
-        LOG_TRACE("begin epoll_wait");
         int number = epoll_wait(epollFd, events, MAX_EVENT_NUMBER, -1);
-        LOG_TRACE("end epoll_wait");
         if (number < 0 && errno != EINTR) {
             LOG_ERROR("epoll wait failed!!!");
             break;
@@ -242,6 +240,14 @@ int main(int argc, char* argv[]) {
                         {
                             stop_server = true;
                         }
+                        case 30:
+                        {
+                            // 处理读写出错的情况
+                            CHeapTimer* tempTimer = clientDatas[sockfd].timer;
+                            tempTimer->callback_func(&clientDatas[sockfd]);
+                            if (tempTimer)
+                                cTimerHeap.DelTimer(tempTimer);
+                        }
                         }
                         LOG_INFO("deal signals: %d", signals[i]);
                     }
@@ -251,42 +257,25 @@ int main(int argc, char* argv[]) {
                 // socket上有数据可以读取了，调用chttp类的Read
                 LOG_TRACE("data coming EPOLLIN");
                 CHeapTimer* tempTimer = clientDatas[sockfd].timer;
-                if (https[sockfd].Read()) {
-                    LOG_TRACE("Read client addr : %s", inet_ntoa(https[sockfd].GetAddress()->sin_addr));
-                    pool->Append(https + sockfd);
-                    if (tempTimer) {
-                        LOG_TRACE("adjust timer once");
-                        time_t cur = time(NULL);
-                        tempTimer->m_iExpireTime = cur + 3 * TIMESLOT;
-                        cTimerHeap.Adjust(tempTimer);
-                    }
+                if (tempTimer) {
+                    LOG_TRACE("adjust timer once");
+                    time_t cur = time(NULL);
+                    tempTimer->m_iExpireTime = cur + 3 * TIMESLOT;
+                    cTimerHeap.Adjust(tempTimer);
                 }
-                else {
-                    if (tempTimer->callback_func) {
-                        tempTimer->callback_func(&clientDatas[sockfd]);
-                        if (tempTimer) cTimerHeap.DelTimer(tempTimer);
-                    }
-                }
+                pool->Append(https + sockfd, 1);
             }
             else if (events[i].events & EPOLLOUT) {
                 LOG_TRACE("data can write EPOLLOUT");
                 // socket上可以写数据了，调用chttp类的Write
                 CHeapTimer* tempTimer = clientDatas[sockfd].timer;
-                if (https[sockfd].Write()) {
-                    LOG_TRACE("Write client addr : %s", inet_ntoa(https[sockfd].GetAddress()->sin_addr));
-                    if (tempTimer) {
-                        LOG_TRACE("adjust timer once");
-                        time_t cur = time(NULL);
-                        tempTimer->m_iExpireTime = cur + 3 * TIMESLOT;
-                        cTimerHeap.Adjust(tempTimer);
-                    }
+                if (tempTimer) {
+                    LOG_TRACE("adjust timer once");
+                    time_t cur = time(NULL);
+                    tempTimer->m_iExpireTime = cur + 3 * TIMESLOT;
+                    cTimerHeap.Adjust(tempTimer);
                 }
-                else {
-                    if (tempTimer && &clientDatas[sockfd]) {
-                        tempTimer->callback_func(&clientDatas[sockfd]);
-                    }
-                    if (tempTimer) cTimerHeap.DelTimer(tempTimer);
-                }
+                pool->Append(https + sockfd, 2);
             }
         }
         if (timeout) {
